@@ -1,56 +1,65 @@
+import torch
 import torch.nn as nn
-class SEFS(nn.Module):
-    def __init__(self, input_dim, z_dim, h_dim, num_layers, dropout):
-        super(SEFS, self).__init__()
-        self.input_dim = input_dim
-        self.z_dim = z_dim
-        self.h_dim = h_dim
-        self.num_layers = num_layers
-        self.dropout = dropout
-        self.fc = nn.Linear(input_dim   , h_dim)
-        ## want to add 3 layers for the fc
-        ## writh thre fully connected layer at once 
-        ## want activation functiopn between each layer
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, h_dim),
-            ## activation function
-            nn.ReLU(),
-            nn.Linear(h_dim, h_dim),
-            nn.ReLU(),
-            nn.Linear(h_dim, h_dim),
-            nn.ReLU(),
-        )
+import torch.nn.functional as F
 
-        self.xhatdecoder = nn.Sequential(
-            nn.Linear( z_dim, h_dim),
-            nn.ReLU(),
-            nn.Linear(h_dim, input_dim),
-            nn.ReLU(),
-        )
 
-        self.maskdecoder = nn.Sequential(
-            nn.Linear(z_dim, h_dim),
-            nn.ReLU(),
-            nn.Linear(h_dim, input_dim),
-            nn.ReLU(),
-        )
-        ## fc with outputlayer size 
-        self.fc_out = nn.Linear(h_dim, z_dim)
+def Gaussian_CDF(x):
+    return 0.5 * (1. + torch.erf(x / torch.sqrt(2.)))
+
+class FCNet(nn.Module):
+    def __init__(self, in_features, out_features, num_layers=1, hidden_features=100,
+                 activation=nn.ReLU, dropout=0.0):
+        super(FCNet, self).__init__()
+
+        self.layers = nn.ModuleList()
+        
+        for i in range(num_layers - 1):
+            self.layers.append(nn.Linear(in_features, hidden_features))
+            self.layers.append(activation())
+            self.layers.append(nn.Dropout(dropout))
+
+        self.layers.append(nn.Linear(hidden_features, out_features))
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+
+class SEFS_SS_Phase(nn.Module):
+    def __init__(self, input_dims, network_settings):
+        super(SEFS_SS_Phase, self).__init__()
+
+        self.x_dim = input_dims['x_dim']
+        self.z_dim = input_dims['z_dim']
+        
+        self.reg_scale = network_settings['reg_scale']
+        self.h_dim_e = network_settings['h_dim_e']
+        self.num_layers_e = network_settings['num_layers_e']
+        self.h_dim_d = network_settings['h_dim_d']
+        self.num_layers_d = network_settings['num_layers_d']
+        self.fc_activate_fn = network_settings['fc_activate_fn']
+
+        self.encoder = FCNet(self.x_dim, self.z_dim, self.num_layers_e, self.h_dim_e,
+                             self.fc_activate_fn)
+        self.decoder_x = FCNet(self.z_dim, self.x_dim, self.num_layers_d, self.h_dim_d,
+                                self.fc_activate_fn)
+        self.decoder_m = FCNet(self.z_dim, self.x_dim, self.num_layers_d, self.h_dim_d,
+                                self.fc_activate_fn)
+        
+    def sample_gate_vecotr(self, pi, correlation_matrix, num_samples):
+        # correlation_matrix: (x_dim, x_dim)
+        # num_samples: batch_size
     
-    def encode(self, x):
-        x=self.encoder(x)
-        x=self.fc_out(x)
-        return x
-    def xhatdecode(self,x):
-        x=self.xhatdecoder(x)
-        return x
+    def mask_generation()
+        # generate a mask matrix
+        
+        
+    def forward(self, x):
+        # sample a binary vector from 
+        
+        z = self.encoder(x)
+        x_hat = self.decoder_x(z)
+        m_hat = self.decoder_m(z)
 
-    def maskdecode(self,x):
-        x=self.maskdecoder(x)
-        return x
-    
-    def forward(self, x): 
-        x=self.encode(x)
-        xtilde=self.xhatdecode(x)
-        mask=self.maskdecode(x)
-        return x,xtilde, mask
+        return loss, x_hat, m_hat
