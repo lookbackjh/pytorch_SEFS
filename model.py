@@ -33,10 +33,10 @@ class SEFS_SS_Phase(nn.Module):
         self.x_dim = input_dims['x_dim']
         self.z_dim = input_dims['z_dim']
 
-        self.x_hat=network_settings['x_hat']
-        self.pi_ = network_settings['pi_']
-        self.LT = network_settings['LT']
-        self.batch_size = network_settings['batch_size']
+        self.x_hat=network_settings['x_hat'] ##computed beforhand
+        self.pi_ = network_settings['pi_'] ## selected beforhand
+        self.LT = network_settings['LT']     ##  computed beforehand
+        self.batch_size = network_settings['batch_size']  ## selected beforhand
         self.reg_scale = network_settings['reg_scale']
         self.h_dim_e = network_settings['h_dim_e']
         self.num_layers_e = network_settings['num_layers_e']
@@ -53,13 +53,13 @@ class SEFS_SS_Phase(nn.Module):
         
     def sample_gate_vector(self,x):
         # x: (batch_size, x_dim)
-        # LT_matrix: (x_dim, x_dim) , Lower triangel of correlation matrix should be computed before the traing phase. 
+        # LT_matrix: (x_dim, x_dim) , Lower triangel of correlation matrix should be computed before the traing phase.(via choleskly decompostion) 
         # batch_size: batch_size
         # pi_: (x_dim, 1) , pi_ is a hyper parameter that controls the probability,
         ## given correlateion matrix, sample a binary vector from a multivariate Bernoulli distribution
         
         mask=self.mask_generation(self.pi_, self.LT, self.batch_size)
-        x_tilde=mask*self.x+ (1-mask)*self.x_hat
+        x_tilde=mask*x+ (1-mask)*self.x_hat
 
         ## 애매한건 다 네트워크 입력값에 넣는걸로 해놨음. ex batchsize, x_hat(평균값), pi_ 등등
 
