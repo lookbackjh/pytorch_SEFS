@@ -48,10 +48,14 @@ class SEFS_SS_Phase(nn.Module):
                                 self.fc_activate_fn)
         
     def sample_gate_vecotr(self, pi, correlation_matrix, num_samples):
-        # correlation_matrix: (x_dim, x_dim)
+        pass
+        # correlation_matrix: (x_dim, x_dim) , correlation matrix should be computed before the traing phase. 
         # num_samples: batch_size
     
-    def mask_generation()
+    def mask_generation():
+
+        
+        pass
         # generate a mask matrix
         
         
