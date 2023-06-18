@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import scipy
+from scipy import special
 import numpy as np
 def Gaussian_CDF(x):
     return 0.5 * (1. + torch.erf(x / torch.sqrt(2.)))
@@ -12,13 +13,14 @@ class FCNet(nn.Module):
         super(FCNet, self).__init__()
 
         self.layers = nn.ModuleList()
-        
+        self.layers.append(nn.Linear(in_features, hidden_features))
         for i in range(num_layers - 1):
-            self.layers.append(nn.Linear(in_features, hidden_features))
+            self.layers.append(nn.Linear(hidden_features, hidden_features))
             self.layers.append(activation())
             self.layers.append(nn.Dropout(dropout))
 
         self.layers.append(nn.Linear(hidden_features, out_features))
+        self.layers.append(activation())
 
     def forward(self, x):
         for layer in self.layers:
@@ -49,7 +51,8 @@ class SEFS_SS_Phase(nn.Module):
         self.decoder_x = FCNet(self.z_dim, self.x_dim, self.num_layers_d, self.h_dim_d,
                                 self.fc_activate_fn)
         self.decoder_m = FCNet(self.z_dim, self.x_dim, self.num_layers_d, self.h_dim_d,
-                                self.fc_activate_fn)
+                                nn.Sigmoid)
+        ## out put for mas should be in [0,1] so sigmoid function is used
         
     def sample_gate_vector(self,x):
         # x: (batch_size, x_dim)
@@ -59,6 +62,7 @@ class SEFS_SS_Phase(nn.Module):
         ## given correlateion matrix, sample a binary vector from a multivariate Bernoulli distribution
         
         mask=self.mask_generation(self.pi_, self.LT, self.batch_size)
+        mask=torch.from_numpy(mask).float()
         x_tilde=mask*x+ (1-mask)*self.x_hat
 
         ## 애매한건 다 네트워크 입력값에 넣는걸로 해놨음. ex batchsize, x_hat(평균값), pi_ 등등
