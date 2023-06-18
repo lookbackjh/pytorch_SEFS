@@ -14,12 +14,15 @@ class FCNet(nn.Module):
 
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(in_features, hidden_features))
+        ## input featuure 디멘션에서 hidden feature 디멘션으로 가는 linear layer        
         for i in range(num_layers - 1):
+            ##num layer 개수만큼 hidden layer 생성
             self.layers.append(nn.Linear(hidden_features, hidden_features))
             self.layers.append(activation())
             self.layers.append(nn.Dropout(dropout))
 
         self.layers.append(nn.Linear(hidden_features, out_features))
+        ## 마지막 레이어의 activation은 상황에 따라 다르게 설정해야함 (reconstruction 일 때는 RElu, mask 일 때는 sigmoid)
         self.layers.append(activation())
 
     def forward(self, x):
