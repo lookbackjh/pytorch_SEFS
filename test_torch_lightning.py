@@ -2,14 +2,15 @@ from src.self_supervision.trainer import SSTrainer
 import numpy as np
 import lightning as pl
 import torch
+from synthetic_data import create_data
 
 def config(x_dim):
     model_params = {
         'x_dim': x_dim,
-        'z_dim': 4,
-        'h_dim_e': 10,
+        'z_dim': 30,
+        'h_dim_e': 100,
         'num_layers_e': 3,
-        'h_dim_d': 10,
+        'h_dim_d': 100,
         'num_layers_d': 3,
         'fc_activate_fn': 'relu',
     }
@@ -18,10 +19,18 @@ def config(x_dim):
     
 def run_test():
     # create a random dataset 
-    dataset = np.random.rand(100, 10).astype(np.float32)
-    x_mean = np.mean(dataset, axis=0)
-    x_dim = dataset.shape[1]
-    correlation_mat = np.corrcoef(dataset, rowvar=False)
+
+    unlabeled_x, labeled_x,labeled_y = create_data()
+    ## wnat unlabed_x to numpy float 32 bit
+    unlabeled_x = unlabeled_x.astype(np.float32)
+
+
+
+
+    #dataset = np.random.rand(100, 10).astype(np.float32)
+    x_mean = np.mean(unlabeled_x, axis=0)
+    x_dim = unlabeled_x.shape[1]
+    correlation_mat = np.corrcoef(unlabeled_x, rowvar=False)
     
     # create a selection probability in shape (x_dim)
     pi_ = np.array([0.5 for _ in range(x_dim)])
@@ -45,7 +54,7 @@ def run_test():
         trainer_params = trainer_params
     )
     
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
+    dataloader = torch.utils.data.DataLoader(unlabeled_x, batch_size=32, shuffle=True)
     
     trainer = pl.Trainer(limit_train_batches=10, max_epochs=10)
     trainer.fit(model, dataloader)

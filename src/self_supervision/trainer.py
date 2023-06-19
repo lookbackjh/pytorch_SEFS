@@ -102,12 +102,6 @@ class SSTrainer(pl.LightningModule):
         
         total_loss = loss_x + loss_m
         
-        # Optimize encoder
-        
-        encoder_opt.zero_grad()
-        self.manual_backward(total_loss, retain_graph=True)
-        encoder_opt.step()
-        
         # Optimize feature estimator
         feature_est_opt.zero_grad()
         self.manual_backward(loss_x, retain_graph=True)
@@ -115,8 +109,14 @@ class SSTrainer(pl.LightningModule):
         
         # optimize gate vector estimator
         gate_vec_opt.zero_grad()
-        self.manual_backward(loss_m)
-        gate_vec_opt.step()               
+        self.manual_backward(loss_m,retain_graph=True)
+        gate_vec_opt.step()      
+
+        # Optimize encoder
+        
+        encoder_opt.zero_grad()
+        self.manual_backward(total_loss, retain_graph=True)
+        encoder_opt.step()        
         
         # logging losses
         self.log('loss/x', loss_x)
