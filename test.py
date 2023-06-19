@@ -1,6 +1,6 @@
 import torch.nn as nn
 import numpy as np
-from model import SEFS_SS_Phase
+from src.model import SEFS_SS_Phase
 from torchinfo import summary
 import torch
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
