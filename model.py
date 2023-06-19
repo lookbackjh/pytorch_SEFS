@@ -4,8 +4,11 @@ import torch.nn.functional as F
 import scipy
 from scipy import special
 import numpy as np
+
+
 def Gaussian_CDF(x):
     return 0.5 * (1. + torch.erf(x / torch.sqrt(2.)))
+
 
 class FCNet(nn.Module):
     def __init__(self, in_features, out_features, num_layers=1, hidden_features=100,
@@ -41,7 +44,7 @@ class SEFS_SS_Phase(nn.Module):
         self.x_hat=network_settings['x_hat'] ##computed beforhand
         self.pi_ = network_settings['pi_'] ## selected beforhand
         self.LT = network_settings['LT']     ##  computed beforehand
-        self.batch_size = network_settings['batch_size']  ## selected beforhand
+        self.batch_size = network_settings['batch_size']  ## selected beforhand TODO: need to change this at every train step for the given data size
         self.reg_scale = network_settings['reg_scale']
         self.h_dim_e = network_settings['h_dim_e']
         self.num_layers_e = network_settings['num_layers_e']
@@ -72,8 +75,28 @@ class SEFS_SS_Phase(nn.Module):
 
 
         return x_tilde,mask
-
-
+    
+    def multi_bern(self, pi, correltaion_matrix):
+        # pi: (batch_size, x_dim)
+        # correltaion_matrix: (x_dim, x_dim)
+        
+        # draw a standard normal random vector for self-supervision phase
+        eps = torch.normal(mean=0., std=1., size=[self.batch_size, self.x_dim])
+        
+        # cholesky decomposition of correlation matrix
+        L = torch.cholesky(correltaion_matrix)
+        
+        # generate a multivariate Gaussian random vector
+        v = torch.mul(L, eps)
+        
+        # aplly element-wise Gaussian CDF
+        u = Gaussian_CDF(v)
+        
+        # generate correlated binary gate, using a boolean mask
+        m = (u < pi).float()
+        
+        return m
+    
     
     def mask_generation(self, pi_, L, batch_size):
         ## mb_size is a size of minibatch, pi_ as a hyper parameter that controls the probability, 
