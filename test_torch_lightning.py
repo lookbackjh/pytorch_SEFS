@@ -4,6 +4,7 @@ import lightning as pl
 import torch
 from synthetic_data import create_data
 
+
 def config(x_dim):
     model_params = {
         'x_dim': x_dim,
@@ -21,11 +22,8 @@ def run_test():
     # create a random dataset 
 
     unlabeled_x, labeled_x,labeled_y = create_data()
-    ## wnat unlabed_x to numpy float 32 bit
+
     unlabeled_x = unlabeled_x.astype(np.float32)
-
-
-
 
     #dataset = np.random.rand(100, 10).astype(np.float32)
     x_mean = np.mean(unlabeled_x, axis=0)
@@ -38,11 +36,9 @@ def run_test():
     model_params = config(x_dim)
     
     trainer_params = {
-        'alpha': 0.5,
+        'alpha': 10,
         'optimizer_params' :{
-            'encoder_lr': 1e-4,
-            'decoder_x_lr': 1e-4,
-            'decoder_m_lr': 1e-4,
+            'lr': 1e-4,
         }
     }
     
@@ -56,7 +52,10 @@ def run_test():
     
     dataloader = torch.utils.data.DataLoader(unlabeled_x, batch_size=32, shuffle=True)
     
-    trainer = pl.Trainer(limit_train_batches=10, max_epochs=10)
+    trainer = pl.Trainer(
+        max_epochs=500000,
+        # clip_grad_value=1.0,
+        )
     trainer.fit(model, dataloader)
     
     

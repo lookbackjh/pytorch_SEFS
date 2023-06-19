@@ -30,8 +30,6 @@ class SSTrainer(pl.LightningModule):
         
         self.L = torch.linalg.cholesky(self.R) # compute cholesky decomposition of correlation matrix beforehand
         self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob)
-        
-        self.automatic_optimization = False # we will use custom training loop
     
     def _check_input_type(self, x):
         # check if the input is a torch tensor, if not, convert it to torch tensor
@@ -77,8 +75,6 @@ class SSTrainer(pl.LightningModule):
         self.pi = self._check_device(self.pi)
         self.x_mean = self._check_device(self.x_mean)
         
-        encoder_opt, feature_est_opt, gate_vec_opt = self.optimizers()
-        
         # sample gate vector
         m = self.multi_bern(batch_size, x_dim)
         # shape of m: (batch_sizex, x_dim)
@@ -98,40 +94,24 @@ class SSTrainer(pl.LightningModule):
         # compute loss
         loss_x = F.mse_loss(x_hat, x)
         
-        loss_m = self.alpha_coef * F.cross_entropy(m_hat, m)
+        loss_m = self.alpha_coef * F.binary_cross_entropy(m_hat, m)
+        # loss_m = -(m*torch.log(m_hat) + (1-m)*torch.log(1-m_hat)).sum(-1).mean()
+        # replace the binary cross entropy with the commented line if you want to observe a similar loss scale for the original code
         
-        total_loss = loss_x + loss_m
-        
-        # Optimize feature estimator
-        feature_est_opt.zero_grad()
-        self.manual_backward(loss_x, retain_graph=True)
-        feature_est_opt.step()
-        
-        # optimize gate vector estimator
-        gate_vec_opt.zero_grad()
-        self.manual_backward(loss_m,retain_graph=True)
-        gate_vec_opt.step()      
-
-        # Optimize encoder
-        
-        encoder_opt.zero_grad()
-        self.manual_backward(total_loss, retain_graph=True)
-        encoder_opt.step()        
+        total_loss = loss_x + self.alpha_coef * loss_m
         
         # logging losses
-        self.log('loss/x', loss_x)
-        self.log('loss/m', loss_m)
-        self.log('loss/total', total_loss)
+        self.log('loss/x', loss_x, prog_bar=True)
+        self.log('loss/m', loss_m, prog_bar=True)
+        self.log('loss/total', total_loss, prog_bar=True)
+        # self.log('loss/temp', temp, prog_bar=True)
         
         return total_loss
     
     def configure_optimizers(self):
         # need 3 different optimizers for 3 different parts
-        encoder_optimizer = torch.optim.Adam(self.model.encoder.parameters(), lr=self.optimizer_params['encoder_lr'])
-        feature_est_optimizer = torch.optim.Adam(self.model.decoder_x.parameters(), lr=self.optimizer_params['decoder_x_lr'])
-        gate_vec_optimizer = torch.optim.Adam(self.model.decoder_m.parameters(), lr=self.optimizer_params['decoder_m_lr'])
-        
-        return [encoder_optimizer, feature_est_optimizer, gate_vec_optimizer], []
+        encoder_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.optimizer_params['lr'])
+        return [encoder_optimizer], []
         
         
         
