@@ -3,6 +3,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+class Prediction(nn.Module):
+    def __init__(self,in_features,out_features=1) -> None:
+        super().__init__()
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Linear(in_features, out_features))
+        self.layers.append(nn.Sigmoid())
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
 
 class FCNet(nn.Module):
     def __init__(self, 
@@ -35,14 +46,14 @@ class FCNet(nn.Module):
         return x
 
 
-class SEFS_SS_Phase(nn.Module):
+class SEFS_S_Phase(nn.Module):
     activation_table = {
         'relu': nn.ReLU,
         'tanh': nn.Tanh,
         'sigmoid': nn.Sigmoid,
     }
     def __init__(self, model_params):
-        super(SEFS_SS_Phase, self).__init__()
+        super(SEFS_S_Phase, self).__init__()
 
         self.x_dim = model_params['x_dim']
         self.z_dim = model_params['z_dim']
@@ -64,20 +75,22 @@ class SEFS_SS_Phase(nn.Module):
         self.encoder = FCNet(self.x_dim, self.z_dim, self.num_layers_e, self.h_dim_e,
                              in_layer_activation=self.fc_activate_fn)
         
-        self.decoder_x = FCNet(self.z_dim, self.x_dim, self.num_layers_d, self.h_dim_d,
-                                in_layer_activation=self.fc_activate_fn)
         
-        self.decoder_m = FCNet(self.z_dim, self.x_dim, self.num_layers_d, self.h_dim_d,
+        self.predictor = FCNet(self.z_dim, 1, self.num_layers_d, self.h_dim_d,
                                in_layer_activation=self.fc_activate_fn,
                                final_layer_activation=nn.Sigmoid)
         
-        ## out put for mas should be in [0,1] so sigmoid function is used
         
-    def estimate_feature_vec(self, x_tilde):
-        return self.decoder_x(x_tilde)
+        
+        self.predictor_linear=Prediction(self.z_dim,1)
+        ## wnat to use sigmod as final activation function
+        
+        ## for a multiclass classification task, final activation function must be softmax. 
+        
+        
     
-    def estimate_gate_vec(self, x_tilde):
-        return self.decoder_m(x_tilde)
+    def estimate_probability(self, x_tilde):
+        return self.predictor(x_tilde)
     
     def encode(self, x):
         return self.encoder(x)
