@@ -54,7 +54,8 @@ class SEFS_S_Phase(nn.Module):
     }
     def __init__(self, model_params):
         super(SEFS_S_Phase, self).__init__()
-
+        ## i want pi to be a parameter with 0.5 as initial value with x_dim * 1 dimension
+        self.pi=torch.nn.Parameter(torch.ones(model_params['x_dim'],1)*0.5)
         self.x_dim = model_params['x_dim']
         self.z_dim = model_params['z_dim']
         
@@ -88,6 +89,9 @@ class SEFS_S_Phase(nn.Module):
         ## for a multiclass classification task, final activation function must be softmax. 
         
         
+    def get_pi(self):
+        ##returns pi 
+        return self.pi
     
     def estimate_probability(self, x_tilde):
         return self.predictor(x_tilde)

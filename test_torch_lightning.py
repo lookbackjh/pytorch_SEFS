@@ -23,7 +23,7 @@ def run_test_supervision():
     data=SyntheticData()
     dataloader=data.supervision_data()
     x_mean,x_dim,correlation_mat=data.get_supervision_info()
-    # create a selection probability in shape (x_dim)
+    # create a selection probability in shape (x_dim)d
     pi_ = np.array([0.5 for _ in range(x_dim)])
     model_params = config(x_dim)
     trainer_params = {
@@ -64,7 +64,7 @@ def run_test_self_supervison():
     
     trainer_params = {
         'alpha': 10,
-        'beta':1,
+        'beta':5,
         'optimizer_params' :{
             'lr': 1e-4,
         }

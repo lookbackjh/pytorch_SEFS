@@ -72,7 +72,7 @@ class SyntheticData:
         labeled_x = self.labeled_x.astype(np.float32)
         labeled_y = self.labeled_y.astype(np.float32)
         label_dataset = CustomDataset(labeled_x, labeled_y)
-        dataloader = torch.utils.data.DataLoader(label_dataset, batch_size=2, shuffle=True)
+        dataloader = torch.utils.data.DataLoader(label_dataset, batch_size=20, shuffle=True)
         return dataloader
     
     def get_self_supervison_info(self):

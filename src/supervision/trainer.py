@@ -33,12 +33,9 @@ class STrainer(pl.LightningModule):
 
 
         self.L = torch.linalg.cholesky(self.R+1e-6*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
-
-        self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob)
-        self.pi= self.pi.unsqueeze(1).requires_grad_(True)
     
     def _check_input_type(self, x):
-        # check if the input is a torch tensor, if not, convert it to torch tensor
+        # check if the input is a torch tensor, if not, convert it to torch tensor 
         if not isinstance(x, torch.Tensor):
             x = torch.from_numpy(x).to(dtype=torch.float32)
         return x
@@ -52,15 +49,14 @@ class STrainer(pl.LightningModule):
     def Gaussian_CDF(self, x):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
     
-    def Relaxed_MultiBern(self, batch_size,x_dim, pi,tau):
+    def relaxed_multiBern(self, batch_size,x_dim, pi,tau):
 
         eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
         v = torch.matmul(self.L, eps)
         u = self.Gaussian_CDF(v)
+        m=torch.sigmoid((torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau).T
 
-        m_relaxed=torch.sigmoid((torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
-
-        return m_relaxed.T
+        return m
     
     def multi_bern(self, batch_size, x_dim):
         # self.pi: (x_dim)
@@ -85,11 +81,14 @@ class STrainer(pl.LightningModule):
         return m.T
         
     def training_step(self, batch, batch_size):
+        # torch.autograd.set_detect_anomaly(True)
         x,y=batch
         batch_size, x_dim = x.shape
         
         self.L = self._check_device(self.L)
-        self.pi = self._check_device(self.pi)
+
+        pi=self.model.get_pi()
+
         ## for relaxation pi must be in shape of (x_dim,1), thus we unsquueze the pi
         
 
@@ -100,9 +99,11 @@ class STrainer(pl.LightningModule):
 
         ## mask is a relaxed version for parameter pi to be trained. 
 
-        m = self.Relaxed_MultiBern(batch_size, x_dim,self.pi,1.0)
+        m= self.relaxed_multiBern(batch_size, x_dim,pi,1.0)
         # shape of m: (batch_sizex, x_dim)
-        
+ 
+        ## if m is greater than 0.5 want to make it 1
+        m=(m>0.5).float()
         # generate feature subset
         x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
         ## want to change dtype of xtilde to float32    
@@ -114,21 +115,22 @@ class STrainer(pl.LightningModule):
         z = self.model.encoder(x_tilde)
         
         # estimate x_hat from decoder
-        y_hat = self.model.predictor_linear(z).squeeze(1)
+        y_hat = self.model.predictor(z).squeeze(1)
         
         
         # compute loss
         # loss_y: loss for classification
-        loss_y = F.binary_cross_entropy( y, y_hat)
+        loss_y = F.binary_cross_entropy(y_hat,y)
         # total_loss by using coefficient beta, controls the number fo features selected.
-        total_loss=loss_y+self.beta_coef*self.pi.sum()
+        total_loss=loss_y+self.beta_coef*pi.sum()
         
    
         
         # logging losses
         self.log('loss/total', total_loss, prog_bar=True)
         self.log('loss/temp', loss_y, prog_bar=True)
-        
+        self.log('first pi', pi[0], prog_bar=True)
+
         return total_loss
     
     def configure_optimizers(self):
