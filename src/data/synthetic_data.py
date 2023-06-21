@@ -13,7 +13,7 @@ from .dataloader import CustomDataset
 class SyntheticData:
     def __init__(self) -> None:
         self.unlabeled_x, self.labeled_x, self.labeled_y = self.create_data()
-        pass
+
     def get_noisy_two_moons(self,n_samples=1000, n_feats=100, noise_twomoon=0.1, noise_nuisance=1.0, seed_=1234):
         X, Y = make_moons(n_samples=n_samples, noise=noise_twomoon, random_state=seed_)
         np.random.seed(seed_)
@@ -61,33 +61,31 @@ class SyntheticData:
         tr_Y_onehot = tr_Y_onehot[idx]
         return UX, tr_X,tr_Y
 
-    def self_supervision_data(self):
+    def get_self_supervised_dataset(self):
+        return self.unlabeled_x.astype(np.float32)
+
+    def get_supervised_dataset(self):
+        return self.labeled_x.astype(np.float32), self.labeled_y.astype(np.float32)
+
+    def self_supervision_dataloader(self, batch_size=32):
         # returns dataloader for self-supervison task 
         unlabeled_x = self.unlabeled_x.astype(np.float32)
-        dataloader = torch.utils.data.DataLoader(unlabeled_x, batch_size=32, shuffle=True)
+        dataloader = torch.utils.data.DataLoader(unlabeled_x, batch_size=batch_size, shuffle=True)
         return dataloader 
 
-    def supervision_data(self):
+    def supervision_dataloader(self, batch_size=20):
         ## returnss dataloader for supervision  task
         labeled_x = self.labeled_x.astype(np.float32)
         labeled_y = self.labeled_y.astype(np.float32)
         label_dataset = CustomDataset(labeled_x, labeled_y)
-        dataloader = torch.utils.data.DataLoader(label_dataset, batch_size=20, shuffle=True)
+        dataloader = torch.utils.data.DataLoader(label_dataset, batch_size=batch_size, shuffle=True)
         return dataloader
     
-    def get_self_supervison_info(self):
+    def get_data_info(self):
         x_mean = np.mean(self.unlabeled_x, axis=0)
         x_dim = self.unlabeled_x.shape[1]
         correlation_mat = np.corrcoef(self.unlabeled_x, rowvar=False)
         return x_mean, x_dim, correlation_mat
-    
-    def get_supervision_info(self):
-        x_mean = np.mean(self.labeled_x, axis=0)
-        x_dim = self.labeled_x.shape[1]
-        correlation_mat = np.corrcoef(self.labeled_x, rowvar=False)
-        return x_mean, x_dim, correlation_mat
-
-
 
 
 
