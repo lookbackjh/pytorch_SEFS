@@ -57,7 +57,7 @@ class DataWrapper:
             self_supervision_data = self.data.get_self_supervised_dataset()
 
         else:
-            # TODO: this will be used to get only the parts of the data that are needed for self-supervision phase
+            # TODO: this will be used to get only the parts of the data that are needed for self-supervision_phase phase
             raise NotImplementedError("Non-synthetic data is not supported yet")
             pass
 
@@ -73,7 +73,7 @@ class DataWrapper:
             self_supervision_data = self.data.get_supervised_dataset()
 
         else:
-            # TODO: this will be used to get only the parts of the data that are needed for self-supervision phase
+            # TODO: this will be used to get only the parts of the data that are needed for self-supervision_phase phase
             raise NotImplementedError("Non-synthetic data is not supported yet")
             pass
 
@@ -84,5 +84,5 @@ class DataWrapper:
         s_dataloader = DataLoader(
             CustomDataset(*s_dataset), batch_size=batch_size, shuffle=True
         )
-        # supervision dataset must be wrapped by CustomDataset class to be used in dataloader
+        # supervision_phase dataset must be wrapped by CustomDataset class to be used in dataloader
         return s_dataloader

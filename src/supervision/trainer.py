@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from .model import SEFS_S_Phase
+from src.supervision.model import SEFS_S_Phase
 import lightning as pl
 import torch
 import torch.nn.functional as F
@@ -16,7 +16,8 @@ class STrainer(pl.LightningModule):
                  trainer_params
                  ) -> None:
         super().__init__()
-        
+        self.save_hyperparameters()
+
         self.model = SEFS_S_Phase(
             model_params=model_params
         )
@@ -59,7 +60,7 @@ class STrainer(pl.LightningModule):
         # self.pi: (x_dim)
         # correltaion_matrix: (x_dim, x_dim)
         
-        # draw a standard normal random vector for self-supervision phase
+        # draw a standard normal random vector for self-supervision_phase phase
         eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
         # shape: (x_dim, batch_size)
         
