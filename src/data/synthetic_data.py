@@ -7,7 +7,6 @@ import os
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.datasets import make_moons
-from .dataloader import CustomDataset
 
     
 class SyntheticData:
@@ -67,20 +66,6 @@ class SyntheticData:
     def get_supervised_dataset(self):
         return self.labeled_x.astype(np.float32), self.labeled_y.astype(np.float32)
 
-    def self_supervision_dataloader(self, batch_size=32):
-        # returns dataloader for self-supervison task 
-        unlabeled_x = self.unlabeled_x.astype(np.float32)
-        dataloader = torch.utils.data.DataLoader(unlabeled_x, batch_size=batch_size, shuffle=True)
-        return dataloader 
-
-    def supervision_dataloader(self, batch_size=20):
-        ## returnss dataloader for supervision  task
-        labeled_x = self.labeled_x.astype(np.float32)
-        labeled_y = self.labeled_y.astype(np.float32)
-        label_dataset = CustomDataset(labeled_x, labeled_y)
-        dataloader = torch.utils.data.DataLoader(label_dataset, batch_size=batch_size, shuffle=True)
-        return dataloader
-    
     def get_data_info(self):
         x_mean = np.mean(self.unlabeled_x, axis=0)
         x_dim = self.unlabeled_x.shape[1]
