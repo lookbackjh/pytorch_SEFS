@@ -7,9 +7,25 @@ import numpy as np
 import pandas as pd
 from typing import Union
 
-from torch.utils.data import DataLoader
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 from src.data.synthetic_data import SyntheticData
+
+
+class CustomDataset(Dataset):
+    def __init__(self, x, y):
+        self.x_data = torch.from_numpy(x)
+        self.y_data = torch.from_numpy(y)
+
+    def __len__(self):
+        return len(self.x_data)
+
+    def __getitem__(self, idx):
+        x = self.x_data[idx]
+        y = self.y_data[idx]
+
+        return x, y
 
 
 class DataWrapper:
@@ -65,5 +81,8 @@ class DataWrapper:
 
     def get_supervision_dataloader(self, batch_size):
         s_dataset = self.get_supervision_dataset()
-        s_dataloader = DataLoader(s_dataset, batch_size=batch_size, shuffle=True)
+        s_dataloader = DataLoader(
+            CustomDataset(*s_dataset), batch_size=batch_size, shuffle=True
+        )
+        # supervision dataset must be wrapped by CustomDataset class to be used in dataloader
         return s_dataloader
