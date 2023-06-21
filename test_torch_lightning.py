@@ -23,8 +23,8 @@ def config(x_dim):
 def run_test_supervision():
     # create a random dataset
     data=SyntheticData()
-    dataloader=data.supervision_data()
-    x_mean,x_dim,correlation_mat=data.get_supervision_info()
+    dataloader=data.supervision_dataloader()
+    x_mean,x_dim,correlation_mat=data.get_data_info()
     # create a selection probability in shape (x_dim)d
     pi_ = np.array([0.5 for _ in range(x_dim)])
     model_params = config(x_dim)
@@ -56,7 +56,7 @@ def run_test_self_supervison():
 
     #dataset = np.random.rand(100, 10).astype(np.float32)
     data = SyntheticData()
-    dataloader = data.self_supervision_data()
+    dataloader = data.self_supervision_dataloader()
     x_mean,x_dim,correlation_mat=data.get_data_info()
     
     # create a selection probability in shape (x_dim)
