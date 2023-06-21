@@ -28,9 +28,6 @@ class STrainer(pl.LightningModule):
         
         self.x_mean = self._check_input_type(x_mean) 
         self.R = self._check_input_type(correlation_mat)
-        
-        
-
 
         self.L = torch.linalg.cholesky(self.R+1e-6*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
     
@@ -81,55 +78,42 @@ class STrainer(pl.LightningModule):
         return m.T
         
     def training_step(self, batch, batch_size):
-        # torch.autograd.set_detect_anomaly(True)
-        x,y=batch
+        x, y = batch
+        # what is the shape of x and y?
         batch_size, x_dim = x.shape
         
         self.L = self._check_device(self.L)
 
-        pi=self.model.get_pi()
+        pi = self.model.get_pi()
 
-        ## for relaxation pi must be in shape of (x_dim,1), thus we unsquueze the pi
-        
-
-        ## pi is also a trainable param. 
         self.x_mean = self._check_device(self.x_mean)
         
         # sample gate vector
 
-        ## mask is a relaxed version for parameter pi to be trained. 
-
-        m= self.relaxed_multiBern(batch_size, x_dim,pi,1.0)
+        # create a relaxed multi-bernoulli distribution for generating a mask
+        m = self.relaxed_multiBern(batch_size, x_dim, pi, 1.0)
         # shape of m: (batch_sizex, x_dim)
  
-        ## if m is greater than 0.5 want to make it 1
-        m=(m>0.5).float()
+        # if m is greater than 0.5 want to make it 1
+        m = (m > 0.5).float()
+
         # generate feature subset
         x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
-        ## want to change dtype of xtilde to float32    
-        x_tilde=x_tilde.to(dtype=torch.float32)
-        
-        ## for encoder the parameters should bee transferred from self-supervision phase
 
-        # get z from encoder 
+        # get z from encoder
         z = self.model.encoder(x_tilde)
         
         # estimate x_hat from decoder
-        y_hat = self.model.predictor(z).squeeze(1)
-        
-        
+        y_hat_logit = self.model.predictor(z).squeeze(1)
+
         # compute loss
-        # loss_y: loss for classification
-        loss_y = F.binary_cross_entropy(y_hat,y)
-        # total_loss by using coefficient beta, controls the number fo features selected.
+        loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y)
         total_loss=loss_y+self.beta_coef*pi.sum()
-        
-   
-        
+
         # logging losses
         self.log('loss/total', total_loss, prog_bar=True)
         self.log('loss/temp', loss_y, prog_bar=True)
-        self.log('first pi', pi[0], prog_bar=True)
+        self.log('metric/pi_var', pi.var(), prog_bar=True)  # variance of pi, we expect it to be increasing
 
         return total_loss
     
