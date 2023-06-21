@@ -16,6 +16,7 @@ class SSTrainer(pl.LightningModule):
                  trainer_params
                  ) -> None:
         super().__init__()
+        self.save_hyperparameters()
         
         self.model = SEFS_SS_Phase(
             model_params=model_params
@@ -50,7 +51,7 @@ class SSTrainer(pl.LightningModule):
         # self.pi: (x_dim)
         # correltaion_matrix: (x_dim, x_dim)
         
-        # draw a standard normal random vector for self-supervision phase
+        # draw a standard normal random vector for self-supervision_phase phase
         eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
         # shape: (x_dim, batch_size)
         
@@ -90,11 +91,12 @@ class SSTrainer(pl.LightningModule):
         
         # estimate gate vector
         m_hat = self.model.estimate_gate_vec(z)
+        # shape of m_hat: (batch_size, x_dim) also it is the "logits" not the probability
         
         # compute loss
         loss_x = F.mse_loss(x_hat, x)
         
-        loss_m = self.alpha_coef * F.binary_cross_entropy(m_hat, m)
+        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, m)
         # loss_m = -(m*torch.log(m_hat) + (1-m)*torch.log(1-m_hat)).sum(-1).mean()
         # replace the binary cross entropy with the commented line if you want to observe a similar loss scale for the original code
         
@@ -112,9 +114,4 @@ class SSTrainer(pl.LightningModule):
         # need 3 different optimizers for 3 different parts
         encoder_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.optimizer_params['lr'])
         return [encoder_optimizer], []
-        
-        
-        
-        
-        
         

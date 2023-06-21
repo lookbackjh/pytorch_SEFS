@@ -1,49 +1,16 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
+
+from src.models_common import FCNet
+
 
 class Prediction(nn.Module):
     def __init__(self,in_features,out_features=1) -> None:
         super().__init__()
-        self.layers = nn.ModuleList()
-        self.layers.append(nn.Linear(in_features, out_features))
-        self.layers.append(nn.Sigmoid())
-    def forward(self, x):
-        for layer in self.layers:
-            x = layer(x)
-        return x
 
-
-class FCNet(nn.Module):
-    def __init__(self, 
-                 in_features, 
-                 out_features,
-                 num_layers=1,
-                 hidden_features=100,
-                 in_layer_activation=nn.ReLU,
-                 final_layer_activation=nn.ReLU, 
-                 dropout=0.0):
-        super(FCNet, self).__init__()
-
-        self.layers = nn.ModuleList()
-        self.layers.append(nn.Linear(in_features, hidden_features))
-        ## input feature size to hidden feature size      
-        for i in range(num_layers - 1):
-            ##create num layer with  hidden layer 
-            self.layers.append(nn.Linear(hidden_features, hidden_features))
-            self.layers.append(in_layer_activation())
-            self.layers.append(nn.Dropout(dropout))
-
-        self.layers.append(nn.Linear(hidden_features, out_features))
-        ## translate 
-        ## in_layer_activation of the last layer should be set differently depending on the situation (RElu for reconstruction, sigmoid for mask)
-        self.layers.append(final_layer_activation())
 
     def forward(self, x):
-        for layer in self.layers:
-            x = layer(x)
-        return x
+        return self.layers(x)
 
 
 class SEFS_S_Phase(nn.Module):
@@ -52,10 +19,11 @@ class SEFS_S_Phase(nn.Module):
         'tanh': nn.Tanh,
         'sigmoid': nn.Sigmoid,
     }
+
     def __init__(self, model_params):
         super(SEFS_S_Phase, self).__init__()
-        ## i want pi to be a parameter with 0.5 as initial value with x_dim * 1 dimension
-        self.pi=torch.nn.Parameter(torch.ones(model_params['x_dim'],1)*0.5)
+        # pi to be a parameter with 0.5 as initial value with x_dim * 1 dimension
+        self.pi = torch.nn.Parameter(torch.ones(model_params['x_dim'], 1)*0.5)
         self.x_dim = model_params['x_dim']
         self.z_dim = model_params['z_dim']
         
@@ -75,22 +43,19 @@ class SEFS_S_Phase(nn.Module):
 
         self.encoder = FCNet(self.x_dim, self.z_dim, self.num_layers_e, self.h_dim_e,
                              in_layer_activation=self.fc_activate_fn)
-        
-        
+
         self.predictor = FCNet(self.z_dim, 1, self.num_layers_d, self.h_dim_d,
                                in_layer_activation=self.fc_activate_fn,
-                               final_layer_activation=nn.Sigmoid)
-        
-        
-        
-        self.predictor_linear=Prediction(self.z_dim,1)
-        ## wnat to use sigmod as final activation function
-        
-        ## for a multiclass classification task, final activation function must be softmax. 
-        
-        
+                               final_layer_activation=None)
+
+        self.predictor_linear = nn.Sequential(
+            nn.Linear(self.z_dim, 1),
+            nn.Sigmoid()
+        )
+        # ??? what is this for
+
     def get_pi(self):
-        ##returns pi 
+        # returns pi
         return self.pi
     
     def estimate_probability(self, x_tilde):
