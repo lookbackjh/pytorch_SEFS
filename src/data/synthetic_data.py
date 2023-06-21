@@ -61,13 +61,19 @@ class SyntheticData:
         tr_Y_onehot = tr_Y_onehot[idx]
         return UX, tr_X,tr_Y
 
-    def self_supervision_data(self, batch_size=32):
+    def get_self_supervised_dataset(self):
+        return self.unlabeled_x.astype(np.float32)
+
+    def get_supervised_dataset(self):
+        return self.labeled_x.astype(np.float32), self.labeled_y.astype(np.float32)
+
+    def self_supervision_dataloader(self, batch_size=32):
         # returns dataloader for self-supervison task 
         unlabeled_x = self.unlabeled_x.astype(np.float32)
         dataloader = torch.utils.data.DataLoader(unlabeled_x, batch_size=batch_size, shuffle=True)
         return dataloader 
 
-    def supervision_data(self, batch_size=20):
+    def supervision_dataloader(self, batch_size=20):
         ## returnss dataloader for supervision  task
         labeled_x = self.labeled_x.astype(np.float32)
         labeled_y = self.labeled_y.astype(np.float32)
