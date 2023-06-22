@@ -109,14 +109,14 @@ class STrainer(pl.LightningModule):
 
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y,reduction='mean') # loss for y_hat
-        total_loss=loss_y+self.beta_coef*pi.sum()
+        total_loss=loss_y+self.beta_coef*pi.sum(-1).mean()
 
         # logging losses
         self.log('loss/total', total_loss, prog_bar=True)
         self.log('loss/temp', loss_y, prog_bar=True)
-        self.log('metric/pi_var', pi[0], prog_bar=True)  # variance of pi, we expect it to be increasing
-        self.log('metric/pi_1', pi[10], prog_bar=True) 
-        self.log('metric/pi_2', pi[20], prog_bar=True) 
+        self.log('metric/pi_1', pi[0], prog_bar=True)  # variance of pi, we expect it to be increasing
+        self.log('metric/pi_2', pi[10], prog_bar=True) 
+        self.log('metric/pi_3', pi[20], prog_bar=True) 
 
         return total_loss
     
