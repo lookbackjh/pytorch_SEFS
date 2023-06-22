@@ -50,7 +50,7 @@ class SEFS_S_Phase(nn.Module):
 
         self.predictor_linear = nn.Sequential(
             nn.Linear(self.z_dim, 1),
-            nn.Sigmoid()
+            # nn.Sigmoid()
         )
         # ??? what is this for
 
