@@ -52,12 +52,17 @@ class SyntheticData:
         random.seed(seed)
         idx1 = random.sample(np.where(tr_Y==1)[0].tolist(), max_labeled_samples)
         idx0 = random.sample(np.where(tr_Y==0)[0].tolist(), max_labeled_samples)
-
+        
         idx  = idx1 + idx0
         random.shuffle(idx)
         tr_X        = tr_X[idx]
         tr_Y        = tr_Y[idx]
         tr_Y_onehot = tr_Y_onehot[idx]
+
+        scaler=MinMaxScaler()
+        scaler.fit(np.concatenate([tr_X, UX], axis=0))
+        tr_X    = scaler.transform(tr_X)
+        UX      = scaler.transform(UX)
         return UX, tr_X,tr_Y
 
     def get_self_supervised_dataset(self):
