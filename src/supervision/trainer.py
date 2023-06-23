@@ -77,7 +77,49 @@ class STrainer(pl.LightningModule):
         # shape of m: (x_dim, batch_size)
         
         return m.T
-        
+
+    def validation_step(self, batch, batch_size):
+        x, y = batch
+        # what is the shape of x and y?
+        batch_size, x_dim = x.shape
+
+        self.L = self._check_device(self.L)
+
+        pi = self.model.get_pi()
+
+        self.x_mean = self._check_device(self.x_mean)
+
+        # sample gate vector
+
+        # create a relaxed multi-bernoulli distribution for generating a mask
+        m = self.relaxed_multiBern(batch_size, x_dim, pi, 1.0)
+        # shape of m: (batch_sizex, x_dim)
+
+        # if m is greater than 0.5 want to make it 1
+        # m = (m > 0.5).float()
+
+        # generate feature subset
+        x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
+
+        # get z from encoder
+        z = self.model.encoder(x_tilde)
+
+        # estimate x_hat from decoder
+        y_hat_logit = self.model.predictor_linear(z).squeeze(1)
+
+        # compute loss
+        loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
+        total_loss = loss_y + self.beta_coef * pi.sum(-1).mean()
+
+        # logging losses
+        self.log('supervision/loss/val_total', total_loss, prog_bar=True)
+        self.log('supervision/loss/val_y', loss_y, prog_bar=True)
+
+        # log histogram of pi tensor
+        self.logger.experiment.add_histogram('supervision/val_pi', pi, self.current_epoch)
+
+        return total_loss
+
     def training_step(self, batch, batch_size):
         x, y = batch
         # what is the shape of x and y?
@@ -112,14 +154,15 @@ class STrainer(pl.LightningModule):
         total_loss=loss_y+self.beta_coef*pi.sum(-1).mean()
 
         # logging losses
-        self.log('loss/total', total_loss, prog_bar=True)
-        self.log('loss/temp', loss_y, prog_bar=True)
-        self.log('metric/pi_1', pi[0], prog_bar=True)  # variance of pi, we expect it to be increasing
-        self.log('metric/pi_2', pi[10], prog_bar=True) 
-        self.log('metric/pi_3', pi[20], prog_bar=True) 
+        self.log('supervision/loss/train_total', total_loss, prog_bar=True)
+        self.log('supervision/loss/train_y', loss_y, prog_bar=True)
+
+        # log histogram of pi tensor
+        self.logger.experiment.add_histogram('supervision/train_pi', pi, self.current_epoch)
 
         return total_loss
-    
+
+
     def configure_optimizers(self):
         # need 3 different optimizers for 3 different parts
         encoder_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.optimizer_params['lr'])
