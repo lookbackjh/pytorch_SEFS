@@ -86,7 +86,8 @@ class STrainer(pl.LightningModule):
         self.L = self._check_device(self.L)
 
         pi = self.model.get_pi()
-
+        pi.data.clamp_(0)
+        
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
