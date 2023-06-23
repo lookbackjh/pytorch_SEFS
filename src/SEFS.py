@@ -25,6 +25,7 @@ class SEFS:
                  exp_name='',  # a string for indicating the name of the experiment
                  log_step=100,  # log every 100 steps
                  val_data = None,
+                 early_stopping_patience=50,  # early stopping patience for both phases
                  ):
 
         if 'batch_size' not in ss_lightning_params:
@@ -69,7 +70,7 @@ class SEFS:
 
         ss_early_stopping = pl.pytorch.callbacks.EarlyStopping(
             monitor='self-supervision/loss/val_total',
-            patience=10,
+            patience=early_stopping_patience,
             mode='min',
             verbose=False
         )
@@ -96,7 +97,7 @@ class SEFS:
 
         s_early_stopping = pl.pytorch.callbacks.EarlyStopping(
             monitor='supervision/loss/val_total',
-            patience=10,
+            patience=early_stopping_patience,
             mode='min',
             verbose=False,
         )
