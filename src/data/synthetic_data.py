@@ -43,27 +43,33 @@ class SyntheticData:
         seed=12345
         sigma_n = 1.0
         max_labeled_samples=10
-        blocksize=10
-        tr_X, tr_Y, tr_Y_onehot = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1, noise_nuisance=sigma_n, seed_=seed)
-        UX, UY, UY_onehot       = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1, noise_nuisance=sigma_n, seed_=seed+1)
+        blocksize = 10
         block_noise = 0.3
+
+        tr_X, tr_Y, _ = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1, noise_nuisance=sigma_n, seed_=seed)
+        val_X, val_Y, _ = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1, noise_nuisance=sigma_n, seed_=seed+1)
+
         tr_X = self.get_blockcorr(tr_X, blocksize, block_noise, seed)
-        UX   = self.get_blockcorr(UX, blocksize, block_noise, seed+1)
-        random.seed(seed)
-        idx1 = random.sample(np.where(tr_Y==1)[0].tolist(), max_labeled_samples)
-        idx0 = random.sample(np.where(tr_Y==0)[0].tolist(), max_labeled_samples)
+        val_X = self.get_blockcorr(val_X, blocksize, block_noise, seed+1)
+
+        random_gen = np.random.default_rng(seed)
+
+        y_equals_1_idx = np.where(tr_Y == 1)[0].tolist()
+        y_equals_0_idx = np.where(tr_Y == 0)[0].tolist()
+
+        idx1 = random_gen.choice(y_equals_1_idx, max_labeled_samples)
+        idx0 = random_gen.choice(y_equals_0_idx, max_labeled_samples)
         
-        idx  = idx1 + idx0
-        random.shuffle(idx)
-        tr_X        = tr_X[idx]
-        tr_Y        = tr_Y[idx]
-        tr_Y_onehot = tr_Y_onehot[idx]
+        idx = idx1 + idx0
+        random_gen.shuffle(idx)
+        tr_X = tr_X[idx]
+        tr_Y = tr_Y[idx]
 
         scaler=MinMaxScaler()
-        scaler.fit(np.concatenate([tr_X, UX], axis=0))
+        scaler.fit(np.concatenate([tr_X, val_X], axis=0))
         tr_X    = scaler.transform(tr_X)
-        UX      = scaler.transform(UX)
-        return UX, tr_X,tr_Y
+        val_X      = scaler.transform(val_X)
+        return val_X, tr_X, tr_Y
 
     def get_self_supervised_dataset(self):
         return self.unlabeled_x.astype(np.float32)
