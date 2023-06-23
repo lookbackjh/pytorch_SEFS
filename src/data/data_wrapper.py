@@ -29,7 +29,7 @@ class CustomDataset(Dataset):
 
 
 class DataWrapper:
-    def __init__(self, data: Union[np.ndarray, pd.DataFrame, SyntheticData]):
+    def __init__(self, data: Union[np.ndarray, pd.DataFrame, SyntheticData], seed=12345):
         if isinstance(data, pd.DataFrame):
             self.data = data.to_numpy()
         else:

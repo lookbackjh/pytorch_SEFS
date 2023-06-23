@@ -5,8 +5,8 @@ import numpy as np
 import torch.nn
 
 from src.data.data_wrapper import DataWrapper
-from supervision.trainer import STrainer
-from self_supervision.trainer import SSTrainer
+from src.supervision.trainer import STrainer
+from src.self_supervision.trainer import SSTrainer
 from lightning.pytorch.loggers import TensorBoardLogger
 
 
@@ -15,16 +15,16 @@ BASE_DIR = str(Path(__file__).resolve().parent.parent)
 
 class SEFS:
     def __init__(self,
-                 data: DataWrapper, # input data should be a DataWrapper object
-                 selection_prob,    # pre-selected selection probability. only used in self-supervision_phase phase
+                 train_data: DataWrapper,  # input train_data should be a DataWrapper object
+                 selection_prob,  # pre-selected selection probability. only used in self-supervision_phase phase
                  model_params,  # common for both phases
-                 trainer_params, # this is a dict containing all the parameters for both phases
+                 trainer_params,  # this is a dict containing all the parameters for both phases
                  ss_lightning_params,
                  s_lightning_params,
                  log_dir=BASE_DIR,  # default log directory
-                 exp_name='',   # a string for indicating the name of the experiment
-                 exp_version=None,  # a string or an integer that is for indicating the version of the experiment
-                 log_step=1000,  # log every 1000 steps
+                 exp_name='',  # a string for indicating the name of the experiment
+                 log_step=100,  # log every 100 steps
+                 val_data = None,
                  ):
 
         if 'batch_size' not in ss_lightning_params:
@@ -50,9 +50,18 @@ class SEFS:
             version="supervision_phase"
         )
 
-        self.ss_dataloader = data.get_self_supervision_dataloader(batch_size=ss_batch_size)
-        self.s_dataloader = data.get_supervision_dataloader(batch_size=s_batch_size)
-        x_mean, x_dim, correlation_mat = data.get_data_info()
+        self.train_ss_dataloader = train_data.get_self_supervision_dataloader(batch_size=ss_batch_size)
+        self.train_s_dataloader = train_data.get_supervision_dataloader(batch_size=s_batch_size)
+
+        if val_data is not None:
+            self.val_ss_dataloader = val_data.get_self_supervision_dataloader(batch_size=ss_batch_size)
+            self.val_s_dataloader = val_data.get_supervision_dataloader(batch_size=s_batch_size)
+
+        else:
+            self.val_ss_dataloader = None
+            self.val_s_dataloader = None
+
+        x_mean, x_dim, correlation_mat = train_data.get_data_info()
 
         self.self_supervision_phase = SSTrainer(
             x_mean=x_mean,
@@ -85,7 +94,10 @@ class SEFS:
         )
 
     def train(self):
-        self.self_supervision_phase_trainer.fit(self.self_supervision_phase, self.ss_dataloader)
+        self.self_supervision_phase_trainer.fit(self.self_supervision_phase,
+                                                train_dataloaders=self.train_ss_dataloader,
+                                                val_dataloaders=self.val_ss_dataloader
+                                                )
 
         # load the trained weight of encoder from self-supervision_phase phase and assign to the supervision_phase phase
         trained_encoder = self.self_supervision_phase.model.encoder
@@ -95,7 +107,11 @@ class SEFS:
             trained_encoder.state_dict()
         )
 
-        self.supervision_trainer.fit(self.supervision_phase, self.s_dataloader)
+        self.supervision_trainer.fit(self.supervision_phase,
+                                     train_dataloaders=self.train_s_dataloader,
+                                     val_dataloaders=self.val_s_dataloader
+                                     )
+
 
 
 if __name__ == '__main__':
@@ -104,7 +120,7 @@ if __name__ == '__main__':
     data = DataWrapper(SyntheticData())
 
     sefs = SEFS(
-        data=data,
+        train_data=data,
         selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
         model_params={
             'x_dim': data.x_dim,
