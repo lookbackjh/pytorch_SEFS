@@ -68,6 +68,43 @@ class SSTrainer(pl.LightningModule):
         # shape of m: (x_dim, batch_size)
         
         return m.T
+
+    def validation_step(self, x, batch_size):
+        batch_size, x_dim = x.shape
+
+        self.L = self._check_device(self.L)
+        self.pi = self._check_device(self.pi)
+        self.x_mean = self._check_device(self.x_mean)
+
+        # sample gate vector
+        m = self.multi_bern(batch_size, x_dim)
+        # shape of m: (batch_sizex, x_dim)
+
+        # generate feature subset
+        x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
+
+        # get z from encoder
+        z = self.model.encoder(x_tilde)
+
+        # estimate x_hat from decoder
+        x_hat = self.model.estimate_feature_vec(z)
+
+        # estimate gate vector
+        m_hat = self.model.estimate_gate_vec(z)
+        # shape of m_hat: (batch_size, x_dim) also it is the "logits" not the probability
+
+        # compute loss
+        loss_x = F.mse_loss(x_hat, x)
+
+        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, m)
+        # loss_m = -(m*torch.log(m_hat) + (1-m)*torch.log(1-m_hat)).sum(-1).mean()
+        # replace the binary cross entropy with the commented line if you want to observe a similar loss scale for the original code
+
+        total_loss = loss_x + self.alpha_coef * loss_m
+
+        self.log('self-supervision/loss/val_x', loss_x, prog_bar=True)
+        self.log('self-supervision/loss/val_m', loss_m, prog_bar=True)
+        self.log('self-supervision/loss/val_total', total_loss, prog_bar=True)
         
     def training_step(self, x, batch_size):
         batch_size, x_dim = x.shape
@@ -103,9 +140,9 @@ class SSTrainer(pl.LightningModule):
         total_loss = loss_x + self.alpha_coef * loss_m
         
         # logging losses
-        self.log('loss/x', loss_x, prog_bar=True)
-        self.log('loss/m', loss_m, prog_bar=True)
-        self.log('loss/total', total_loss, prog_bar=True)
+        self.log('self-supervision/loss/train_x', loss_x, prog_bar=True)
+        self.log('self-supervision/loss/train_m', loss_m, prog_bar=True)
+        self.log('self-supervision/loss/train_total', total_loss, prog_bar=True)
         # self.log('loss/temp', temp, prog_bar=True)
         
         return total_loss
