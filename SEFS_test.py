@@ -5,6 +5,7 @@ from src.data.data_wrapper import DataWrapper
 from src.SEFS import SEFS
 from src.models_common import ACTIVATION_TABLE
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -52,6 +53,9 @@ def main():
     data = DataWrapper(SyntheticData())
 
     args = parse_args()
+
+    # NOTE: if you want to change the default values of the parameters, you can do it here.
+    # i.e., args.z_dim = 2**7
 
     model_params = {
             'x_dim': data.x_dim,
