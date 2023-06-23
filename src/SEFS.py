@@ -5,8 +5,8 @@ import numpy as np
 import torch.nn
 
 from src.data.data_wrapper import DataWrapper
-from supervision.trainer import STrainer
-from self_supervision.trainer import SSTrainer
+from src.supervision.trainer import STrainer
+from src.self_supervision.trainer import SSTrainer
 from lightning.pytorch.loggers import TensorBoardLogger
 
 
