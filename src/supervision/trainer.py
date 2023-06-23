@@ -86,6 +86,8 @@ class STrainer(pl.LightningModule):
         self.L = self._check_device(self.L)
 
         pi = self.model.get_pi()
+        pi.data.clamp_(0)
+
 
         self.x_mean = self._check_device(self.x_mean)
         
@@ -114,9 +116,14 @@ class STrainer(pl.LightningModule):
         # logging losses
         self.log('loss/total', total_loss, prog_bar=True)
         self.log('loss/temp', loss_y, prog_bar=True)
-        self.log('metric/pi_1', pi[0], prog_bar=True)  # variance of pi, we expect it to be increasing
-        self.log('metric/pi_2', pi[10], prog_bar=True) 
-        self.log('metric/pi_3', pi[20], prog_bar=True) 
+        ## in the same format as above, I want to log every pi in tensorboard
+        for i in range(len(pi)):
+            self.logger.experiment.add_histogram('pi:{}'.format(i), pi[i], self.current_epoch)
+        
+        ## want to log every pi in tensorboard
+        
+        #         #
+
 
         return total_loss
     
