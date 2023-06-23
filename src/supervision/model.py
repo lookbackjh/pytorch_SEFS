@@ -1,15 +1,11 @@
 import torch
 import torch.nn as nn
 
-from src.models_common import FCNet
+from src.models_common import FCNet, ACTIVATION_TABLE
 
 
 class SEFS_S_Phase(nn.Module):
-    activation_table = {
-        'relu': nn.ReLU,
-        'tanh': nn.Tanh,
-        'sigmoid': nn.Sigmoid,
-    }
+    activation_table = ACTIVATION_TABLE
 
     def __init__(self, model_params):
         super(SEFS_S_Phase, self).__init__()
@@ -35,15 +31,13 @@ class SEFS_S_Phase(nn.Module):
         self.encoder = FCNet(self.x_dim, self.z_dim, self.num_layers_e, self.h_dim_e,
                              in_layer_activation=self.fc_activate_fn)
 
-        self.predictor = FCNet(self.z_dim, 1, self.num_layers_d, self.h_dim_d,
-                               in_layer_activation=self.fc_activate_fn,
-                               final_layer_activation=None)
+        # self.predictor = FCNet(self.z_dim, 1, self.num_layers_d, self.h_dim_d,
+        #                        in_layer_activation=self.fc_activate_fn,
+        #                        final_layer_activation=None)
 
         self.predictor_linear = nn.Sequential(
             nn.Linear(self.z_dim, 1),
-            # nn.Sigmoid()
         )
-        # ??? what is this for
 
     def get_pi(self):
         # returns pi

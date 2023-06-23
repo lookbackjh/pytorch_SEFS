@@ -1,13 +1,9 @@
 import argparse
-from pathlib import Path
-
-import lightning as pl
 import numpy as np
-import torch.nn
 from src.data.synthetic_data import SyntheticData
 from src.data.data_wrapper import DataWrapper
 from src.SEFS import SEFS
-
+from src.models_common import ACTIVATION_TABLE
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -22,8 +18,8 @@ def parse_args():
     parser.add_argument("--num_layers_d", type=int, default=3, help="number of hidden layers in decoder")
 
     parser.add_argument("--dropout", type=float, default=0.1, help="dropout rate")
-    parser.add_argument("--fc_activate_fn", type=str, default="ReLU", help="activation function in fully connected layers")
-
+    parser.add_argument("--fc_activate_fn", type=str, default="relu", choices=list(ACTIVATION_TABLE.keys()),
+                        help="activation function in fully connected layers")
 
     # trainer params
     parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
@@ -50,8 +46,6 @@ def get_log_dir(args):
     exp_name = 'test'
 
     return exp_name
-
-
 
 
 def main():
@@ -102,7 +96,8 @@ def main():
         trainer_params=trainer_params,
         ss_lightning_params=ss_lightning_params,
         s_lightning_params=s_lightning_params,
-        exp_name=get_log_dir(args),
+        exp_name=get_log_dir(args), # this is the name of the experiment.
+                                    # you can change it to whatever you want using the function above.
     )
 
     sefs.train()
