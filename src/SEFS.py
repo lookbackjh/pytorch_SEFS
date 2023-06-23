@@ -63,6 +63,17 @@ class SEFS:
 
         x_mean, x_dim, correlation_mat = train_data.get_data_info()
 
+        #################################################################################################
+        # Self-Supervision Phase
+        #################################################################################################
+
+        ss_early_stopping = pl.pytorch.callbacks.EarlyStopping(
+            monitor='self-supervision/loss/val_total',
+            patience=10,
+            mode='min',
+            verbose=False
+        )
+
         self.self_supervision_phase = SSTrainer(
             x_mean=x_mean,
             correlation_mat=correlation_mat,
@@ -75,7 +86,19 @@ class SEFS:
             logger=tb_logger_ss,
             log_every_n_steps=log_step,
             default_root_dir=self.log_dir,
+            callbacks=[ss_early_stopping],
             **ss_lightning_params
+        )
+
+        #################################################################################################
+        # Supervision Phase
+        #################################################################################################
+
+        s_early_stopping = pl.pytorch.callbacks.EarlyStopping(
+            monitor='supervision/loss/val_total',
+            patience=10,
+            mode='min',
+            verbose=False,
         )
 
         self.supervision_phase = STrainer(
@@ -90,6 +113,7 @@ class SEFS:
             logger=tb_logger_s,
             log_every_n_steps=log_step,
             default_root_dir=self.log_dir,
+            callbacks=[s_early_stopping],
             **s_lightning_params
         )
 
@@ -111,53 +135,6 @@ class SEFS:
                                      train_dataloaders=self.train_s_dataloader,
                                      val_dataloaders=self.val_s_dataloader
                                      )
-
-
-
-if __name__ == '__main__':
-    from src.data.synthetic_data import SyntheticData
-
-    data = DataWrapper(SyntheticData())
-
-    sefs = SEFS(
-        train_data=data,
-        selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
-        model_params={
-            'x_dim': data.x_dim,
-            'z_dim': 10,
-            'h_dim_e': 10,
-            'num_layers_e': 2,
-
-            'h_dim_d': 10,
-            'num_layers_d': 2,
-
-            'dropout': 0.1,
-            'fc_activate_fn': torch.nn.ReLU
-        },
-        trainer_params={
-            'alpha': 10,
-            'beta': 0.1,
-            'optimizer_params': {
-                'lr': 1e-4,
-            },
-        },
-        ss_lightning_params={
-            'max_epochs': 10000,
-            'precision': "16-mixed",
-            'gradient_clip_val': 1.0,
-            'batch_size': 256,
-        },
-        s_lightning_params={
-            'max_epochs': 1000,
-            'precision': "16-mixed",
-            'gradient_clip_val': 1.0,
-            'batch_size': 32,
-        },
-        exp_name='test',
-        exp_version = 'beta-0.1'
-    )
-
-    sefs.train()
 
 
 
