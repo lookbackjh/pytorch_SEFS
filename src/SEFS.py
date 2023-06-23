@@ -38,10 +38,16 @@ class SEFS:
 
         self.log_dir = f"{log_dir}/logs"
 
-        tb_logger = TensorBoardLogger(
+        tb_logger_ss = TensorBoardLogger(
             save_dir=self.log_dir,
             name=exp_name,
-            version=exp_version
+            version="self_supervision_phase"
+        )
+
+        tb_logger_s = TensorBoardLogger(
+            save_dir=self.log_dir,
+            name=exp_name,
+            version="supervision_phase"
         )
 
         self.ss_dataloader = data.get_self_supervision_dataloader(batch_size=ss_batch_size)
@@ -57,6 +63,7 @@ class SEFS:
         )
 
         self.self_supervision_phase_trainer = pl.Trainer(
+            logger=tb_logger_ss,
             log_every_n_steps=log_step,
             default_root_dir=self.log_dir,
             **ss_lightning_params
@@ -71,7 +78,7 @@ class SEFS:
         )
 
         self.supervision_trainer = pl.Trainer(
-            logger=tb_logger,
+            logger=tb_logger_s,
             log_every_n_steps=log_step,
             default_root_dir=self.log_dir,
             **s_lightning_params
@@ -130,6 +137,8 @@ if __name__ == '__main__':
             'gradient_clip_val': 1.0,
             'batch_size': 32,
         },
+        exp_name='test',
+        exp_version = 'beta-0.1'
     )
 
     sefs.train()
