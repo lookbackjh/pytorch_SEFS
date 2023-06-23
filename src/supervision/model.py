@@ -4,15 +4,6 @@ import torch.nn as nn
 from src.models_common import FCNet
 
 
-class Prediction(nn.Module):
-    def __init__(self,in_features,out_features=1) -> None:
-        super().__init__()
-
-
-    def forward(self, x):
-        return self.layers(x)
-
-
 class SEFS_S_Phase(nn.Module):
     activation_table = {
         'relu': nn.ReLU,
