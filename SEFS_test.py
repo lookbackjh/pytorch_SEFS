@@ -105,6 +105,8 @@ def main():
         s_lightning_params=s_lightning_params,
         exp_name=get_log_dir(args), # this is the name of the experiment.
                                     # you can change it to whatever you want using the function above.
+                                    
+        early_stopping_patience=100
     )
 
     sefs.train()
