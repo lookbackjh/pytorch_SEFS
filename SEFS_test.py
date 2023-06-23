@@ -51,6 +51,7 @@ def get_log_dir(args):
 
 def main():
     data = DataWrapper(SyntheticData())
+    val_data = DataWrapper(SyntheticData(456))
 
     args = parse_args()
 
@@ -94,7 +95,8 @@ def main():
     }
 
     sefs = SEFS(
-        data=data,
+        train_data=data,
+        val_data=val_data,
         selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
         model_params=model_params,
         trainer_params=trainer_params,
