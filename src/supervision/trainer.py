@@ -117,6 +117,9 @@ class STrainer(pl.LightningModule):
 
         # log histogram of pi tensor
         self.logger.experiment.add_histogram('supervision/val_pi', pi, self.current_epoch)
+        
+        for i in pi:
+            self.log(f"supervision/metric/pi/{i}", pi[i], prog_bar=False)
 
         return total_loss
 
@@ -159,6 +162,9 @@ class STrainer(pl.LightningModule):
 
         # log histogram of pi tensor
         self.logger.experiment.add_histogram('supervision/train_pi', pi, self.current_epoch)
+        
+        for i in pi:
+            self.log(f"supervision/metric/pi/{i}", pi[i], prog_bar=False)
 
         return total_loss
 
