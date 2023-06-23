@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 import numpy as np
 from src.data.synthetic_data import SyntheticData
 from src.data.data_wrapper import DataWrapper
@@ -43,8 +44,8 @@ def get_log_dir(args):
     #
     # Do some jobs here with args to create a experiment name with the given arguments.
     # Deafult is set to return "test"
-
-    exp_name = 'test'
+    cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+    exp_name = f'test_{cur_time}'
 
     return exp_name
 
