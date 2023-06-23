@@ -85,7 +85,7 @@ class SEFS:
 
         self.self_supervision_phase_trainer = pl.Trainer(
             logger=tb_logger_ss,
-            log_every_n_steps=log_step,
+            check_val_every_n_epoch=10,
             default_root_dir=self.log_dir,
             callbacks=[ss_early_stopping],
             **ss_lightning_params
@@ -112,7 +112,7 @@ class SEFS:
 
         self.supervision_trainer = pl.Trainer(
             logger=tb_logger_s,
-            log_every_n_steps=log_step,
+            check_val_every_n_epoch=10,
             default_root_dir=self.log_dir,
             callbacks=[s_early_stopping],
             **s_lightning_params
