@@ -2,7 +2,7 @@ from pathlib import Path
 
 import lightning as pl
 import numpy as np
-import torch.nn
+import torch
 
 from src.data.data_wrapper import DataWrapper
 from src.supervision.trainer import STrainer
@@ -15,18 +15,21 @@ BASE_DIR = str(Path(__file__).resolve().parent.parent)
 
 class SEFS:
     def __init__(self,
-                 data: DataWrapper, # input data should be a DataWrapper object
-                 selection_prob,    # pre-selected selection probability. only used in self-supervision_phase phase
+                 train_data: DataWrapper,  # input train_data should be a DataWrapper object
+                 selection_prob,  # pre-selected selection probability. only used in self-supervision_phase phase
                  model_params,  # common for both phases
-                 trainer_params, # this is a dict containing all the parameters for both phases
+                 trainer_params,  # this is a dict containing all the parameters for both phases
                  ss_lightning_params,
                  s_lightning_params,
                  log_dir=BASE_DIR,  # default log directory
-                 exp_name='',   # a string for indicating the name of the experiment
-                 exp_version=None,  # a string or an integer that is for indicating the version of the experiment
-                 log_step=1000,  # log every 1000 steps
+                 exp_name='',  # a string for indicating the name of the experiment
+                 log_step=100,  # log every 100 steps
+                 val_data = None,
+                 early_stopping_patience=50,  # early stopping patience for both phases
                  ):
-
+        
+        torch.set_float32_matmul_precision('high')
+        
         if 'batch_size' not in ss_lightning_params:
             ss_lightning_params['batch_size'] = 32
 
@@ -41,18 +44,38 @@ class SEFS:
         tb_logger_ss = TensorBoardLogger(
             save_dir=self.log_dir,
             name=exp_name,
-            version="self_supervision_phase"
+            sub_dir ="self_supervision_phase"
         )
 
         tb_logger_s = TensorBoardLogger(
             save_dir=self.log_dir,
             name=exp_name,
-            version="supervision_phase"
+            sub_dir="supervision_phase"
         )
 
-        self.ss_dataloader = data.get_self_supervision_dataloader(batch_size=ss_batch_size)
-        self.s_dataloader = data.get_supervision_dataloader(batch_size=s_batch_size)
-        x_mean, x_dim, correlation_mat = data.get_data_info()
+        self.train_ss_dataloader = train_data.get_self_supervision_dataloader(batch_size=ss_batch_size)
+        self.train_s_dataloader = train_data.get_supervision_dataloader(batch_size=s_batch_size)
+
+        if val_data is not None:
+            self.val_ss_dataloader = val_data.get_self_supervision_dataloader(batch_size=ss_batch_size, shuffle=False)
+            self.val_s_dataloader = val_data.get_supervision_dataloader(batch_size=s_batch_size, shuffle=False)
+
+        else:
+            self.val_ss_dataloader = None
+            self.val_s_dataloader = None
+
+        x_mean, x_dim, correlation_mat = train_data.get_data_info()
+
+        #################################################################################################
+        # Self-Supervision Phase
+        #################################################################################################
+
+        ss_early_stopping = pl.pytorch.callbacks.EarlyStopping(
+            monitor='self-supervision/val_total',
+            patience=early_stopping_patience,
+            mode='min',
+            verbose=False
+        )
 
         self.self_supervision_phase = SSTrainer(
             x_mean=x_mean,
@@ -64,9 +87,21 @@ class SEFS:
 
         self.self_supervision_phase_trainer = pl.Trainer(
             logger=tb_logger_ss,
-            log_every_n_steps=log_step,
+            check_val_every_n_epoch=10,
             default_root_dir=self.log_dir,
+            callbacks=[ss_early_stopping],
             **ss_lightning_params
+        )
+
+        #################################################################################################
+        # Supervision Phase
+        #################################################################################################
+
+        s_early_stopping = pl.pytorch.callbacks.EarlyStopping(
+            monitor='supervision/val_total',
+            patience=early_stopping_patience,
+            mode='min',
+            verbose=False,
         )
 
         self.supervision_phase = STrainer(
@@ -79,13 +114,17 @@ class SEFS:
 
         self.supervision_trainer = pl.Trainer(
             logger=tb_logger_s,
-            log_every_n_steps=log_step,
+            check_val_every_n_epoch=10,
             default_root_dir=self.log_dir,
+            callbacks=[s_early_stopping],
             **s_lightning_params
         )
 
     def train(self):
-        self.self_supervision_phase_trainer.fit(self.self_supervision_phase, self.ss_dataloader)
+        self.self_supervision_phase_trainer.fit(self.self_supervision_phase,
+                                                train_dataloaders=self.train_ss_dataloader,
+                                                val_dataloaders=self.val_ss_dataloader
+                                                )
 
         # load the trained weight of encoder from self-supervision_phase phase and assign to the supervision_phase phase
         trained_encoder = self.self_supervision_phase.model.encoder
@@ -95,53 +134,10 @@ class SEFS:
             trained_encoder.state_dict()
         )
 
-        self.supervision_trainer.fit(self.supervision_phase, self.s_dataloader)
-
-
-if __name__ == '__main__':
-    from src.data.synthetic_data import SyntheticData
-
-    data = DataWrapper(SyntheticData())
-
-    sefs = SEFS(
-        data=data,
-        selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
-        model_params={
-            'x_dim': data.x_dim,
-            'z_dim': 10,
-            'h_dim_e': 10,
-            'num_layers_e': 2,
-
-            'h_dim_d': 10,
-            'num_layers_d': 2,
-
-            'dropout': 0.1,
-            'fc_activate_fn': torch.nn.ReLU
-        },
-        trainer_params={
-            'alpha': 10,
-            'beta': 0.1,
-            'optimizer_params': {
-                'lr': 1e-4,
-            },
-        },
-        ss_lightning_params={
-            'max_epochs': 10000,
-            'precision': "16-mixed",
-            'gradient_clip_val': 1.0,
-            'batch_size': 256,
-        },
-        s_lightning_params={
-            'max_epochs': 1000,
-            'precision': "16-mixed",
-            'gradient_clip_val': 1.0,
-            'batch_size': 32,
-        },
-        exp_name='test',
-        exp_version = 'beta-0.1'
-    )
-
-    sefs.train()
+        self.supervision_trainer.fit(self.supervision_phase,
+                                     train_dataloaders=self.train_s_dataloader,
+                                     val_dataloaders=self.val_s_dataloader
+                                     )
 
 
 
