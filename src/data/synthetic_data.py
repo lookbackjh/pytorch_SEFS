@@ -10,10 +10,10 @@ from sklearn.datasets import make_moons
 
     
 class SyntheticData:
-    def __init__(self, seed=12345) -> None:
-        self.unlabeled_x, self.labeled_x, self.labeled_y = self.create_data(seed=seed)
+    def __init__(self) -> None:
+        self.unlabeled_x, self.labeled_x, self.labeled_y = self.create_data()
 
-    def get_noisy_two_moons(self, n_samples=1000, n_feats=100, noise_twomoon=0.1, noise_nuisance=1.0, seed_=1234):
+    def get_noisy_two_moons(self,n_samples=1000, n_feats=100, noise_twomoon=0.1, noise_nuisance=1.0, seed_=1234):
         X, Y = make_moons(n_samples=n_samples, noise=noise_twomoon, random_state=seed_)
         np.random.seed(seed_)
         N = np.random.normal(loc=0., scale=noise_nuisance, size=[n_samples, n_feats-2])
@@ -36,37 +36,34 @@ class SyntheticData:
             if p == 0:
                 X_new = np.concatenate([X[:, [p]], tmp], axis=1)
             else:
-                X_new = np.concatenate([X_new, X[:, [p]], tmp], axis=1)
-
+                X_new = np.concatenate([X_new, X[:, [p]], tmp], axis=1)    
         return X_new   
 
-    def create_data(self, seed=12345, sigma_n=1.0, max_labeled_samples=10, blocksize=10, block_noise=0.3):
-        labeld_X, labeled_y, _ = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1, noise_nuisance=sigma_n, seed_=seed)
-        unlabeled_X, unlabeled_y, _ = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1, noise_nuisance=sigma_n, seed_=seed+1)
-
-        labeld_X = self.get_blockcorr(labeld_X, blocksize, block_noise, seed)
-        unlabeled_X = self.get_blockcorr(unlabeled_X, blocksize, block_noise, seed+1)
-
-        # below is for creating a dataset with a few labeled samples
-        rand_gen = np.random.default_rng(seed)
-
-        true_label_idx = rand_gen.choice(np.where(labeled_y==1)[0].tolist(), max_labeled_samples)
-        false_label_idx = rand_gen.choice(np.where(labeled_y==0)[0].tolist(), max_labeled_samples)
+    def create_data(self):
+        seed=12345
+        sigma_n = 1.0
+        max_labeled_samples=10
+        blocksize=10
+        tr_X, tr_Y, tr_Y_onehot = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1, noise_nuisance=sigma_n, seed_=seed)
+        UX, UY, UY_onehot       = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1, noise_nuisance=sigma_n, seed_=seed+1)
+        block_noise = 0.3
+        tr_X = self.get_blockcorr(tr_X, blocksize, block_noise, seed)
+        UX   = self.get_blockcorr(UX, blocksize, block_noise, seed+1)
+        random.seed(seed)
+        idx1 = random.sample(np.where(tr_Y==1)[0].tolist(), max_labeled_samples)
+        idx0 = random.sample(np.where(tr_Y==0)[0].tolist(), max_labeled_samples)
         
-        total_labeled_idx = np.concatenate([true_label_idx, false_label_idx])
-        rand_gen.shuffle(total_labeled_idx)
-
-        labeld_X = labeld_X[total_labeled_idx]
-        labeled_y = labeled_y[total_labeled_idx]
+        idx  = idx1 + idx0
+        random.shuffle(idx)
+        tr_X        = tr_X[idx]
+        tr_Y        = tr_Y[idx]
+        tr_Y_onehot = tr_Y_onehot[idx]
 
         scaler=MinMaxScaler()
-
-        scaler.fit(np.concatenate([labeld_X, unlabeled_X], axis=0))
-
-        labeld_X = scaler.transform(labeld_X)
-        unlabeled_X = scaler.transform(unlabeled_X)
-
-        return unlabeled_X, labeld_X, labeled_y
+        scaler.fit(np.concatenate([tr_X, UX], axis=0))
+        tr_X    = scaler.transform(tr_X)
+        UX      = scaler.transform(UX)
+        return UX, tr_X,tr_Y
 
     def get_self_supervised_dataset(self):
         return self.unlabeled_x.astype(np.float32)

@@ -1,4 +1,4 @@
-*venv/
+.venv/
 *.pyc
-*logs/
 .idea/
+logs/
