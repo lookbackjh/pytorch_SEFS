@@ -26,14 +26,15 @@ def parse_args():
     # trainer params
     parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
     parser.add_argument("--beta", type=float, default=0.1, help="regularization coefficient for pi in supervision phase")
+    parser.add_argument("--l1_coef", type=float, default=0.01, help="regularization coefficient for l1 norm of weights")
     parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
     # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=100000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=100000, help="trainin epochs for supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=100, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=100, help="trainin epochs for supervision phase")
 
-    parser.add_argument("--ss_batch_size", type=int, default=32, help="batch size for self-supervision phase")
+    parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
     parser.add_argument("--gradient_clip_val", type=float, default=1.0, help="gradient clip value in l2 norm")
 
@@ -75,9 +76,10 @@ def main():
     trainer_params = {
             'alpha': args.alpha,
             'beta': args.beta,
+            'l1_coef': args.l1_coef,
             'optimizer_params': {
                 'lr':  args.lr,
-                'weight decay': args.weight_decay,
+                'weight_decay': args.weight_decay,
             },
         }
 

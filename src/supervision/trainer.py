@@ -25,6 +25,7 @@ class STrainer(pl.LightningModule):
         self.trainer_params = trainer_params
         self.alpha_coef = self.trainer_params['alpha']  # alpha coef for gate vec loss
         self.beta_coef=self.trainer_params['beta'] # beta coef for controlling the number of feature selected.  
+        self.l1_coef = self.trainer_params['l1_coef'] # l1 norm regul. coef
         self.optimizer_params = trainer_params['optimizer_params']
         
         self.x_mean = self._check_input_type(x_mean) 
@@ -111,7 +112,10 @@ class STrainer(pl.LightningModule):
 
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
-        total_loss = loss_y + self.beta_coef * pi.sum(-1).mean()
+        
+        l1_norm = self._l1_weight_norm()
+                
+        total_loss = loss_y + self.beta_coef * pi.sum(-1).mean() + self.l1_coef * l1_norm
         
         # logging losses
         self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
@@ -174,5 +178,11 @@ class STrainer(pl.LightningModule):
 
     def configure_optimizers(self):
         # need 3 different optimizers for 3 different parts
-        encoder_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.optimizer_params['lr'])
+        encoder_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.optimizer_params['lr'], weight_decay=self.optimizer_params['weight_decay'])
         return [encoder_optimizer], []
+    
+    def _l1_weight_norm(self):
+        l1_norm = 0.
+        for param in self.model.parameters():
+            l1_norm += torch.sum(torch.abs(param))
+        return l1_norm
