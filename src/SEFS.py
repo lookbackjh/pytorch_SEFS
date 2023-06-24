@@ -2,7 +2,7 @@ from pathlib import Path
 
 import lightning as pl
 import numpy as np
-import torch.nn
+import torch
 
 from src.data.data_wrapper import DataWrapper
 from src.supervision.trainer import STrainer
@@ -27,7 +27,9 @@ class SEFS:
                  val_data = None,
                  early_stopping_patience=50,  # early stopping patience for both phases
                  ):
-
+        
+        torch.set_float32_matmul_precision('high')
+        
         if 'batch_size' not in ss_lightning_params:
             ss_lightning_params['batch_size'] = 32
 
@@ -42,21 +44,21 @@ class SEFS:
         tb_logger_ss = TensorBoardLogger(
             save_dir=self.log_dir,
             name=exp_name,
-            version="self_supervision_phase"
+            sub_dir ="self_supervision_phase"
         )
 
         tb_logger_s = TensorBoardLogger(
             save_dir=self.log_dir,
             name=exp_name,
-            version="supervision_phase"
+            sub_dir="supervision_phase"
         )
 
         self.train_ss_dataloader = train_data.get_self_supervision_dataloader(batch_size=ss_batch_size)
         self.train_s_dataloader = train_data.get_supervision_dataloader(batch_size=s_batch_size)
 
         if val_data is not None:
-            self.val_ss_dataloader = val_data.get_self_supervision_dataloader(batch_size=ss_batch_size)
-            self.val_s_dataloader = val_data.get_supervision_dataloader(batch_size=s_batch_size)
+            self.val_ss_dataloader = val_data.get_self_supervision_dataloader(batch_size=ss_batch_size, shuffle=False)
+            self.val_s_dataloader = val_data.get_supervision_dataloader(batch_size=s_batch_size, shuffle=False)
 
         else:
             self.val_ss_dataloader = None
@@ -69,7 +71,7 @@ class SEFS:
         #################################################################################################
 
         ss_early_stopping = pl.pytorch.callbacks.EarlyStopping(
-            monitor='self-supervision/loss/val_total',
+            monitor='self-supervision/val_total',
             patience=early_stopping_patience,
             mode='min',
             verbose=False
@@ -96,7 +98,7 @@ class SEFS:
         #################################################################################################
 
         s_early_stopping = pl.pytorch.callbacks.EarlyStopping(
-            monitor='supervision/loss/val_total',
+            monitor='supervision/val_total',
             patience=early_stopping_patience,
             mode='min',
             verbose=False,
