@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 import numpy as np
 from src.data.synthetic_data import SyntheticData
 from src.data.data_wrapper import DataWrapper
@@ -10,7 +11,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model params
-    parser.add_argument("--z_dim", type=int, default=2**6, help="dimension of latent variable")
+    parser.add_argument("--z_dim", type=int, default=10, help="dimension of latent variable")
 
     parser.add_argument("--h_dim_e", type=int, default=100, help="dimension of hidden layers in encoder")
     parser.add_argument("--num_layers_e", type=int, default=3, help="number of hidden layers in encoder")
@@ -18,7 +19,7 @@ def parse_args():
     parser.add_argument("--h_dim_d", type=int, default=10, help="dimension of hidden layers in decoder")
     parser.add_argument("--num_layers_d", type=int, default=3, help="number of hidden layers in decoder")
 
-    parser.add_argument("--dropout", type=float, default=0.1, help="dropout rate")
+    parser.add_argument("--dropout", type=float, default=0.0, help="dropout rate")
     parser.add_argument("--fc_activate_fn", type=str, default="relu", choices=list(ACTIVATION_TABLE.keys()),
                         help="activation function in fully connected layers")
 
@@ -43,14 +44,15 @@ def get_log_dir(args):
     #
     # Do some jobs here with args to create a experiment name with the given arguments.
     # Deafult is set to return "test"
-
-    exp_name = 'test'
+    cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+    exp_name = f'test_{cur_time}'
 
     return exp_name
 
 
 def main():
     data = DataWrapper(SyntheticData())
+    val_data = DataWrapper(SyntheticData(456))
 
     args = parse_args()
 
@@ -94,7 +96,8 @@ def main():
     }
 
     sefs = SEFS(
-        data=data,
+        train_data=data,
+        val_data=val_data,
         selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
         model_params=model_params,
         trainer_params=trainer_params,
@@ -102,6 +105,8 @@ def main():
         s_lightning_params=s_lightning_params,
         exp_name=get_log_dir(args), # this is the name of the experiment.
                                     # you can change it to whatever you want using the function above.
+                                    
+        early_stopping_patience=200
     )
 
     sefs.train()
