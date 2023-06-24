@@ -103,6 +103,7 @@ class SSTrainer(pl.LightningModule):
 
         total_loss = loss_x + self.alpha_coef * loss_m
 
+        # log reconstruction loss
         self.log('self-supervision/val_x', loss_x, prog_bar=True)
         self.log('self-supervision/val_m', loss_m, prog_bar=True)
         self.log('self-supervision/val_total', total_loss, prog_bar=True)

@@ -88,6 +88,7 @@ class STrainer(pl.LightningModule):
         self.L = self._check_device(self.L)
 
         pi = self.model.get_pi()
+        ## clamp pi to be between 0 and 1
         pi.data.clamp_(0)
         
         self.x_mean = self._check_device(self.x_mean)
@@ -134,6 +135,8 @@ class STrainer(pl.LightningModule):
         self.L = self._check_device(self.L)
 
         pi = self.model.get_pi()
+        ## clamp pi to be between 0 and 1
+        pi.data.clamp_(0)
 
         self.x_mean = self._check_device(self.x_mean)
         
