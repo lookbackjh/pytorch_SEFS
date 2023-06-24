@@ -11,7 +11,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model params
-    parser.add_argument("--z_dim", type=int, default=2**6, help="dimension of latent variable")
+    parser.add_argument("--z_dim", type=int, default=10, help="dimension of latent variable")
 
     parser.add_argument("--h_dim_e", type=int, default=100, help="dimension of hidden layers in encoder")
     parser.add_argument("--num_layers_e", type=int, default=3, help="number of hidden layers in encoder")
@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument("--h_dim_d", type=int, default=10, help="dimension of hidden layers in decoder")
     parser.add_argument("--num_layers_d", type=int, default=3, help="number of hidden layers in decoder")
 
-    parser.add_argument("--dropout", type=float, default=0.1, help="dropout rate")
+    parser.add_argument("--dropout", type=float, default=0.0, help="dropout rate")
     parser.add_argument("--fc_activate_fn", type=str, default="relu", choices=list(ACTIVATION_TABLE.keys()),
                         help="activation function in fully connected layers")
 
@@ -106,7 +106,7 @@ def main():
         exp_name=get_log_dir(args), # this is the name of the experiment.
                                     # you can change it to whatever you want using the function above.
                                     
-        early_stopping_patience=100
+        early_stopping_patience=200
     )
 
     sefs.train()
