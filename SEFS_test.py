@@ -31,9 +31,9 @@ def parse_args():
 
     # lightning params
     parser.add_argument("--ss_epochs", type=int, default=100000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=10000, help="trainin epochs for supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=100000, help="trainin epochs for supervision phase")
 
-    parser.add_argument("--ss_batch_size", type=int, default=256, help="batch size for self-supervision phase")
+    parser.add_argument("--ss_batch_size", type=int, default=32, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
     parser.add_argument("--gradient_clip_val", type=float, default=1.0, help="gradient clip value in l2 norm")
 
