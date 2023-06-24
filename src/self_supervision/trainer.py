@@ -102,9 +102,9 @@ class SSTrainer(pl.LightningModule):
 
         total_loss = loss_x + self.alpha_coef * loss_m
 
-        self.log('self-supervision/loss/val_x', loss_x, prog_bar=True)
-        self.log('self-supervision/loss/val_m', loss_m, prog_bar=True)
-        self.log('self-supervision/loss/val_total', total_loss, prog_bar=True)
+        self.log('self-supervision/val_x', loss_x, prog_bar=True)
+        self.log('self-supervision/val_m', loss_m, prog_bar=True)
+        self.log('self-supervision/val_total', total_loss, prog_bar=True)
         
     def training_step(self, x, batch_size):
         batch_size, x_dim = x.shape
@@ -140,9 +140,9 @@ class SSTrainer(pl.LightningModule):
         total_loss = loss_x + self.alpha_coef * loss_m
         
         # logging losses
-        self.log('self-supervision/loss/train_x', loss_x, prog_bar=True)
-        self.log('self-supervision/loss/train_m', loss_m, prog_bar=True)
-        self.log('self-supervision/loss/train_total', total_loss, prog_bar=True)
+        self.log('self-supervision/train_x', loss_x, prog_bar=True)
+        self.log('self-supervision/train_m', loss_m, prog_bar=True)
+        self.log('self-supervision/train_total', total_loss, prog_bar=True)
         # self.log('loss/temp', temp, prog_bar=True)
         
         return total_loss

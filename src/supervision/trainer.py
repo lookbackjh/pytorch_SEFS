@@ -31,7 +31,8 @@ class STrainer(pl.LightningModule):
         self.R = self._check_input_type(correlation_mat)
 
         self.L = torch.linalg.cholesky(self.R+1e-6*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
-    
+        self.train_loss_y, self.train_loss_total = 0., 0.
+        
     def _check_input_type(self, x):
         # check if the input is a torch tensor, if not, convert it to torch tensor 
         if not isinstance(x, torch.Tensor):
@@ -111,17 +112,14 @@ class STrainer(pl.LightningModule):
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
         total_loss = loss_y + self.beta_coef * pi.sum(-1).mean()
-
+        
         # logging losses
-        self.log('supervision/loss/val_total', total_loss, prog_bar=True)
-        self.log('supervision/loss/val_y', loss_y, prog_bar=True)
+        self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
+        self.log('supervision/val_y', loss_y, prog_bar=True, logger=False)
 
         # log histogram of pi tensor
         self.logger.experiment.add_histogram('supervision/val_pi', pi, self.current_epoch)
         
-        for i in pi:
-            self.log(f"supervision/metric/pi/{i}", pi[i], prog_bar=False)
-
         return total_loss
 
     def training_step(self, batch, batch_size):
@@ -157,15 +155,19 @@ class STrainer(pl.LightningModule):
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y,reduction='mean') # loss for y_hat
         total_loss=loss_y+self.beta_coef*pi.sum(-1).mean()
 
+        self.train_loss_y = loss_y.item()
+        self.train_loss_total = total_loss.item()
+        
         # logging losses
-        self.log('supervision/loss/train_total', total_loss, prog_bar=True)
-        self.log('supervision/loss/train_y', loss_y, prog_bar=True)
+        self.log('supervision/train_total', total_loss, prog_bar=True)
+        self.log('supervision/train_y', loss_y, prog_bar=True)
 
         # log histogram of pi tensor
         self.logger.experiment.add_histogram('supervision/train_pi', pi, self.current_epoch)
         
-        for i in pi:
-            self.log(f"supervision/metric/pi/{i}", pi[i], prog_bar=False)
+        # for i in range(len(pi)):
+        #     self.log(f"supervision/pi/{i}", pi[i], prog_bar=False)
+        # logging every pi is a bad idead
 
         return total_loss
 
