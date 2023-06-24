@@ -63,9 +63,9 @@ class DataWrapper:
 
         return self_supervision_data
 
-    def get_self_supervision_dataloader(self, batch_size):
+    def get_self_supervision_dataloader(self, batch_size, shuffle=True):
         ss_dataset = self.get_self_supervision_dataset()
-        ss_dataloader = DataLoader(ss_dataset, batch_size=batch_size, shuffle=True)
+        ss_dataloader = DataLoader(ss_dataset, batch_size=batch_size, shuffle=shuffle)
         return ss_dataloader
 
     def get_supervision_dataset(self):
@@ -79,10 +79,10 @@ class DataWrapper:
 
         return self_supervision_data
 
-    def get_supervision_dataloader(self, batch_size):
+    def get_supervision_dataloader(self, batch_size, shuffle=True):
         s_dataset = self.get_supervision_dataset()
         s_dataloader = DataLoader(
-            CustomDataset(*s_dataset), batch_size=batch_size, shuffle=True
+            CustomDataset(*s_dataset), batch_size=batch_size, shuffle=shuffle
         )
         # supervision_phase dataset must be wrapped by CustomDataset class to be used in dataloader
         return s_dataloader
