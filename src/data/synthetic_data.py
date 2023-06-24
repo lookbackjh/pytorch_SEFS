@@ -41,12 +41,12 @@ class SyntheticData:
         return X_new
 
     def create_data(self, seed=12345, sigma_n=1.0, max_labeled_samples=10, blocksize=10, block_noise=0.3):
-        labeld_X, labeled_y, _ = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1,
+        labeled_X, labeled_y, _ = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1,
                                                           noise_nuisance=sigma_n, seed_=seed)
         unlabeled_X, unlabeled_y, _ = self.get_noisy_two_moons(n_samples=1000, n_feats=10, noise_twomoon=0.1,
                                                                noise_nuisance=sigma_n, seed_=seed + 1)
 
-        labeld_X = self.get_blockcorr(labeld_X, blocksize, block_noise, seed)
+        labeled_X = self.get_blockcorr(labeled_X, blocksize, block_noise, seed)
         unlabeled_X = self.get_blockcorr(unlabeled_X, blocksize, block_noise, seed + 1)
 
         # below is for creating a dataset with a few labeled samples
@@ -58,17 +58,17 @@ class SyntheticData:
         total_labeled_idx = np.concatenate([true_label_idx, false_label_idx])
         rand_gen.shuffle(total_labeled_idx)
 
-        labeld_X = labeld_X[total_labeled_idx]
+        labeled_X = labeled_X[total_labeled_idx]
         labeled_y = labeled_y[total_labeled_idx]
 
         scaler = MinMaxScaler()
 
-        scaler.fit(np.concatenate([labeld_X, unlabeled_X], axis=0))
+        scaler.fit(np.concatenate([labeled_X, unlabeled_X], axis=0))
 
-        labeld_X = scaler.transform(labeld_X)
+        labeled_X = scaler.transform(labeled_X)
         unlabeled_X = scaler.transform(unlabeled_X)
 
-        return unlabeled_X, labeld_X, labeled_y
+        return unlabeled_X, labeled_X, labeled_y
 
     def get_self_supervised_dataset(self):
         return self.unlabeled_x.astype(np.float32)
