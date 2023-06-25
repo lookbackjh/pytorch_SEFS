@@ -27,11 +27,11 @@ class SSTrainer(pl.LightningModule):
         self.l1_coef = self.trainer_params['l1_coef'] # l1 norm regul. coef
         self.optimizer_params = trainer_params['optimizer_params']
         
-        self.x_mean = self._check_input_type(x_mean) 
-        self.R = self._check_input_type(correlation_mat)
+        self.x_mean = self._check_input_type(x_mean)  #x_mean: mean of the whole data, computed beforehand
+        self.R = self._check_input_type(correlation_mat)# correlation matrix of the whole data ,computed beforehand
         
         self.L = torch.linalg.cholesky(self.R) # compute cholesky decomposition of correlation matrix beforehand
-        self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob)
+        self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob) # selection probability for each feature, must be trained.
     
     def _check_input_type(self, x):
         # check if the input is a torch tensor, if not, convert it to torch tensor
@@ -103,6 +103,7 @@ class SSTrainer(pl.LightningModule):
 
         total_loss = loss_x + self.alpha_coef * loss_m
 
+        # log reconstruction loss
         self.log('self-supervision/val_x', loss_x, prog_bar=True)
         self.log('self-supervision/val_m', loss_m, prog_bar=True)
         self.log('self-supervision/val_total', total_loss, prog_bar=True)

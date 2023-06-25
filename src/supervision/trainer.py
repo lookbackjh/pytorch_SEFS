@@ -28,8 +28,8 @@ class STrainer(pl.LightningModule):
         self.l1_coef = self.trainer_params['l1_coef'] # l1 norm regul. coef
         self.optimizer_params = trainer_params['optimizer_params']
         
-        self.x_mean = self._check_input_type(x_mean) 
-        self.R = self._check_input_type(correlation_mat)
+        self.x_mean = self._check_input_type(x_mean)  #x_mean: mean of the whole data, computed beforehand
+        self.R = self._check_input_type(correlation_mat) # correlation matrix of the whole data ,computed beforehand
 
         self.L = torch.linalg.cholesky(self.R+1e-6*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
         self.train_loss_y, self.train_loss_total = 0., 0.
@@ -52,8 +52,13 @@ class STrainer(pl.LightningModule):
     def relaxed_multiBern(self, batch_size,x_dim, pi,tau):
 
         eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
+        
         v = torch.matmul(self.L, eps)
+        
+        #generate a multivariate Gaussian random vector from gaussian copula
         u = self.Gaussian_CDF(v)
+
+        #relaxed multi-bernoulli distribution to make the gate vector differentiable
         m=torch.sigmoid((torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau).T
 
         return m
@@ -88,7 +93,8 @@ class STrainer(pl.LightningModule):
         self.L = self._check_device(self.L)
 
         pi = self.model.get_pi()
-        pi.data.clamp_(0)
+        ## clamp pi to be between 0 and 1
+        pi.data.clamp(0,1)
         
         self.x_mean = self._check_device(self.x_mean)
 
@@ -134,6 +140,8 @@ class STrainer(pl.LightningModule):
         self.L = self._check_device(self.L)
 
         pi = self.model.get_pi()
+        ## clamp pi to be between 0 and 1
+        pi.data.clamp(0,1)
 
         self.x_mean = self._check_device(self.x_mean)
         
