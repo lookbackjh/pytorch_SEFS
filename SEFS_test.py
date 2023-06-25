@@ -26,13 +26,13 @@ def parse_args():
     # trainer params
     parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
     parser.add_argument("--beta", type=float, default=0.1, help="regularization coefficient for pi in supervision phase")
-    parser.add_argument("--l1_coef", type=float, default=0.01, help="regularization coefficient for l1 norm of weights")
+    parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
     parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
     # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=100, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=100, help="trainin epochs for supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=100000, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=100000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
@@ -45,73 +45,78 @@ def get_log_dir(args):
     #
     # Do some jobs here with args to create a experiment name with the given arguments.
     # Deafult is set to return "test"
-    cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-    exp_name = f'test_{cur_time}'
+    # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+    # exp_name = f'test_{cur_time}'
+    
+    exp_name = f"l1_coef-{args.l1_coef}"
 
     return exp_name
 
 
 def main():
-    data = DataWrapper(SyntheticData())
-    val_data = DataWrapper(SyntheticData(456))
+    for _l1_coef in [0.0]:
+        data = DataWrapper(SyntheticData())
+        val_data = DataWrapper(SyntheticData(456))
 
-    args = parse_args()
+        args = parse_args()
+        
+        args.l1_coef = _l1_coef
 
-    # NOTE: if you want to change the default values of the parameters, you can do it here.
-    # i.e., args.z_dim = 2**7
+        # NOTE: if you want to change the default values of the parameters, you can do it here.
+        # i.e., args.z_dim = 2**7
 
-    model_params = {
-            'x_dim': data.x_dim,
-            'z_dim': args.z_dim,
-            'h_dim_e': args.h_dim_e,
-            'num_layers_e': args.num_layers_e,
+        model_params = {
+                'x_dim': data.x_dim,
+                'z_dim': args.z_dim,
+                'h_dim_e': args.h_dim_e,
+                'num_layers_e': args.num_layers_e,
 
-            'h_dim_d': args.h_dim_d,
-            'num_layers_d': args.num_layers_d,
+                'h_dim_d': args.h_dim_d,
+                'num_layers_d': args.num_layers_d,
 
-            'dropout': args.dropout,
-            'fc_activate_fn': args.fc_activate_fn,
-    }
-
-    trainer_params = {
-            'alpha': args.alpha,
-            'beta': args.beta,
-            'l1_coef': args.l1_coef,
-            'optimizer_params': {
-                'lr':  args.lr,
-                'weight_decay': args.weight_decay,
-            },
+                'dropout': args.dropout,
+                'fc_activate_fn': args.fc_activate_fn,
         }
 
-    ss_lightning_params = {
-            'max_epochs': args.ss_epochs,
-            'precision': "16-mixed",
-            'gradient_clip_val': args.gradient_clip_val,
-            'batch_size': args.ss_batch_size,
-    }
+        trainer_params = {
+                'alpha': args.alpha,
+                'beta': args.beta,
+                'l1_coef': args.l1_coef,
+                'optimizer_params': {
+                    'lr':  args.lr,
+                    'weight_decay': args.weight_decay,
+                },
+            }
 
-    s_lightning_params = {
-            'max_epochs': args.s_epochs,
-            'precision': "16-mixed",
-            'gradient_clip_val': args.gradient_clip_val,
-            'batch_size': args.s_batch_size,
-    }
+        ss_lightning_params = {
+                'max_epochs': args.ss_epochs,
+                'precision': "16-mixed",
+                'gradient_clip_val': args.gradient_clip_val,
+                'batch_size': args.ss_batch_size,
+        }
 
-    sefs = SEFS(
-        train_data=data,
-        val_data=val_data,
-        selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
-        model_params=model_params,
-        trainer_params=trainer_params,
-        ss_lightning_params=ss_lightning_params,
-        s_lightning_params=s_lightning_params,
-        exp_name=get_log_dir(args), # this is the name of the experiment.
-                                    # you can change it to whatever you want using the function above.
-                                    
-        early_stopping_patience=200
-    )
+        s_lightning_params = {
+                'max_epochs': args.s_epochs,
+                'precision': "16-mixed",
+                'gradient_clip_val': args.gradient_clip_val,
+                'batch_size': args.s_batch_size,
+        }
 
-    sefs.train()
+        sefs = SEFS(
+            train_data=data,
+            val_data=val_data,
+            selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
+            model_params=model_params,
+            trainer_params=trainer_params,
+            ss_lightning_params=ss_lightning_params,
+            s_lightning_params=s_lightning_params,
+            exp_name=get_log_dir(args), # this is the name of the experiment.
+                                        # you can change it to whatever you want using the function above.
+                                        
+            early_stopping_patience=200
+        )
+
+        sefs.train()
 
 
 if __name__ == '__main__':
