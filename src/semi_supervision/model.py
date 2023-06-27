@@ -27,7 +27,10 @@ class SemiSEFS(nn.Module):
             
             self.fc_activate_fn = self.activation_table[self.fc_activate_fn]
 
-        self.pi = torch.nn.Parameter(torch.tensor([0.5 for _ in range(self.x_dim)]))
+        self.pi = torch.nn.Parameter(torch.tensor([
+            [0.5 for _ in range(self.x_dim)]
+        ])
+        )
 
         self.encoder = FCNet(self.x_dim, self.z_dim, self.num_layers_e, self.h_dim_e,
                              in_layer_activation=self.fc_activate_fn)

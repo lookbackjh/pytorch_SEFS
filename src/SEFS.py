@@ -7,6 +7,7 @@ import torch
 from src.data.data_wrapper import DataWrapper
 from src.semi_supervision.trainer import SemiSEFSTrainer
 from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.utilities import CombinedLoader
 
 
 BASE_DIR = str(Path(__file__).resolve().parent.parent)
@@ -46,10 +47,17 @@ class SEFS:
             sub_dir="supervision_phase"
         )
 
-        self.train_dl = train_data.get_semi_super_dataloader(batch_size=ss_batch_size)
+        train_iterables = {"unlabeled": train_data.get_self_supervision_dataloader(batch_size=s_batch_size),
+                         'labeled': train_data.get_supervision_dataloader(batch_size=s_batch_size)}
+
+        self.train_dl = CombinedLoader(train_iterables, mode='max_size_cycle')
 
         if val_data is not None:
-            self.val_dl = val_data.get_semi_super_dataloader(batch_size=ss_batch_size, shuffle=False)
+            val_iterables = {"unlabeled": val_data.get_self_supervision_dataloader(batch_size=s_batch_size, shuffle=False),
+                             'labeled': val_data.get_supervision_dataloader(batch_size=s_batch_size, shuffle=False)
+            }
+
+            self.val_dl = CombinedLoader(val_iterables, mode='sequential')
 
         else:
             self.val_dl = None

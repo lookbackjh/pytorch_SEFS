@@ -7,6 +7,9 @@ import torch.nn.functional as F
 import math
 
 
+EPS = 1e-6
+
+
 class SemiSEFSTrainer(pl.LightningModule):
     def __init__(self,
                  x_mean, # column wise mean of the whole data
@@ -58,25 +61,28 @@ class SemiSEFSTrainer(pl.LightningModule):
         # shape: (x_dim, batch_size)
         
         # generate a multivariate Gaussian random vector
-        v = torch.matmul(self.L, eps)
+        v = torch.matmul(self.L, eps).transpose(0, 1)
         # shape of self.L : (x_dim, batch_size)
         
         # apply element-wise Gaussian CDF
-        u = self.Gaussian_CDF(v)
+        u = self.Gaussian_CDF(v) + EPS
         # shape of u: (x_dim, batch_size)
-        
+
+        pi = pi.clamp(EPS, 1 - EPS)
+
         # generate a relaxed mask
         _inner = pi.log() - (1-pi).log() + u.log() - (1-u).log()
+
         m = F.sigmoid((1/self.tau) * _inner)
-        
-        return m.T
+
+        return m
         
     def cal_ss_loss(self, batch, batch_size, train=True):
         batch_size, x_dim = batch.shape
 
         pi = self.model.get_pi()
+        # (1, x_dim). here 1 can be expanded to batch_size
         # clamp pi to be between 0 and 1
-        pi.data.clamp(0, 1)
 
         # sample gate vector
         m = self.relaxed_multi_bern(batch_size, x_dim, pi)
@@ -109,8 +115,8 @@ class SemiSEFSTrainer(pl.LightningModule):
         # logging losses
         prefix = 'train' if train is True else 'val'
 
-        self.log(f'{prefix}_x', loss_x, prog_bar=True)
-        self.log(f'{prefix}_m', loss_m, prog_bar=True)
+        self.log(f'loss/{prefix}_x', loss_x, prog_bar=True)
+        self.log(f'loss/{prefix}_m', loss_m, prog_bar=True)
         
         return total_loss
 
@@ -121,7 +127,6 @@ class SemiSEFSTrainer(pl.LightningModule):
 
         pi = self.model.get_pi()
         # clamp pi to be between 0 and 1
-        pi.data.clamp(0, 1)
 
         # create a relaxed multi-bernoulli distribution for generating a mask
         m = self.relaxed_multi_bern(batch_size, x_dim, pi)
@@ -142,7 +147,7 @@ class SemiSEFSTrainer(pl.LightningModule):
         prefix = 'train' if train is True else 'val'
 
         # logging losses
-        self.log(f'{prefix}_y', loss_y, prog_bar=True)
+        self.log(f'loss/{prefix}_y', loss_y, prog_bar=True)
 
         return loss_y
 
@@ -151,9 +156,8 @@ class SemiSEFSTrainer(pl.LightningModule):
         self.x_mean = self._check_device(self.x_mean)
 
         # self-supervised loss input
-        x_unlabeled = batch['x_unlabeled']
-        x_labeled = batch['x_labeled']
-        y = batch['y']
+        x_unlabeled = batch['unlabeled']
+        x_labeled, y = batch['labeled']
 
         ss_loss = self.cal_ss_loss(x_unlabeled, x_unlabeled.shape[0])
         s_loss = self.cal_s_loss((x_labeled, y), x_labeled.shape[0])
@@ -162,11 +166,12 @@ class SemiSEFSTrainer(pl.LightningModule):
 
         total_loss = ss_loss + self.loss_weight * s_loss + self.l1_coef * l1_reg
 
-        self.log('total_loss', total_loss, prog_bar=True)
+        self.log('loss/total_loss', total_loss, prog_bar=True)
+        # self.logger.experiment.add_histogram('pi', self.model.get_pi().detach(), self.current_epoch)
 
         return total_loss
 
-    def validation_step(self, batch, batch_size):
+    def validation_step(self, batch, batch_size, dataloader_idx):
         # self-supervised loss input
         unlabeled_X = batch['unlabeled_X']
         labeled_X = batch['labeled_X']

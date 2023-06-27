@@ -52,7 +52,7 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"l1_coef-{args.l1_coef}"
+    exp_name = f"self_super/l1_coef-{args.l1_coef}"
 
     return exp_name
 
@@ -60,8 +60,8 @@ def get_log_dir(args):
 def main():
     for _l1_coef in [0.0]:
         data = DataWrapper(SyntheticData())
-        val_data = DataWrapper(SyntheticData(456))
-
+        # val_data = DataWrapper(SyntheticData(456))    # validation is currently not supported for semi-supervision
+        val_data = None
         args = parse_args()
         
         args.l1_coef = _l1_coef

@@ -14,20 +14,18 @@ from src.data.synthetic_data import SyntheticData
 
 
 class CustomDataset(Dataset):
-    def __init__(self, X_unlabeled, X_labeled, y):
-        self.x_unlabeled = torch.from_numpy(X_unlabeled)
+    def __init__(self, X_labeled, y):
         self.x_labeled = torch.from_numpy(X_labeled)
         self.y = torch.from_numpy(y)
 
     def __len__(self):
-        return len(self.x_unlabeled)
+        return len(self.x_labeled)
 
     def __getitem__(self, idx):
-        x_unlabeled = self.x_unlabeled[idx]
         x_labeled = self.x_labeled[idx]
         y = self.y[idx]
 
-        return {'x_unlabeled': x_unlabeled, 'x_labeled': x_labeled, 'y': y}
+        return x_labeled, y
 
 
 class DataWrapper:
@@ -82,9 +80,9 @@ class DataWrapper:
         return self_supervision_data
 
     def get_supervision_dataloader(self, batch_size, shuffle=True):
-        s_dataset = self.get_supervision_dataset()
+        X, y = self.get_supervision_dataset()
         s_dataloader = DataLoader(
-            CustomDataset(*s_dataset), batch_size=batch_size, shuffle=shuffle
+            CustomDataset(X, y), batch_size=batch_size, shuffle=shuffle
         )
         # supervision_phase dataset must be wrapped by CustomDataset class to be used in dataloader
         return s_dataloader
