@@ -150,9 +150,7 @@ class STrainer(pl.LightningModule):
         # create a relaxed multi-bernoulli distribution for generating a mask
         m = self.relaxed_multiBern(batch_size, x_dim, pi, 1.0)
         # shape of m: (batch_sizex, x_dim)
- 
-        # if m is greater than 0.5 want to make it 1
-        #m = (m > 0.5).float()
+
 
         # generate feature subset
         x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)

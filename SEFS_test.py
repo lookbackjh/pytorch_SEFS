@@ -1,6 +1,8 @@
 import argparse
 from datetime import datetime
 import numpy as np
+from dateutil.parser import parser
+
 from src.data.synthetic_data import SyntheticData
 from src.data.data_wrapper import DataWrapper
 from src.SEFS import SEFS
@@ -27,6 +29,8 @@ def parse_args():
     parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
     parser.add_argument("--beta", type=float, default=0.1, help="regularization coefficient for pi in supervision phase")
     parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
+    parser.add_argument("--tau", type=float, default=1.0, help="temperature parameter for gumbel softmax")
+    parser.add_argument("--loss_weight", type=float, default=1.0, help="loss weight coefficient for ss loss and s loss")
     parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
@@ -82,6 +86,9 @@ def main():
                 'alpha': args.alpha,
                 'beta': args.beta,
                 'l1_coef': args.l1_coef,
+                'tau': args.tau,
+                'loss_weight': args.loss_weight,
+
                 'optimizer_params': {
                     'lr':  args.lr,
                     'weight_decay': args.weight_decay,
