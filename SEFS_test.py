@@ -35,11 +35,9 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
     # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=100000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=100000, help="trainin epochs for supervision phase")
+    parser.add_argument("--epochs", type=int, default=10000, help="trainin epochs for supervision phase")
 
-    parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
-    parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
+    parser.add_argument("--batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--gradient_clip_val", type=float, default=1.0, help="gradient clip value in l2 norm")
 
     return parser.parse_args()
@@ -58,7 +56,7 @@ def get_log_dir(args):
 
 
 def main():
-    for _l1_coef in [0.0]:
+    for _l1_coef in [0.0, 0.1, 0.01, 0.001, 0.0001, 0.00001]:
         data = DataWrapper(SyntheticData())
         # val_data = DataWrapper(SyntheticData(456))    # validation is currently not supported for semi-supervision
         val_data = None
@@ -95,18 +93,11 @@ def main():
                 },
             }
 
-        ss_lightning_params = {
-                'max_epochs': args.ss_epochs,
+        lightning_params = {
+                'max_epochs': args.epochs,
                 'precision': "16-mixed",
                 'gradient_clip_val': args.gradient_clip_val,
-                'batch_size': args.ss_batch_size,
-        }
-
-        s_lightning_params = {
-                'max_epochs': args.s_epochs,
-                'precision': "16-mixed",
-                'gradient_clip_val': args.gradient_clip_val,
-                'batch_size': args.s_batch_size,
+                'batch_size': args.batch_size,
         }
 
         sefs = SEFS(
@@ -115,8 +106,7 @@ def main():
             selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
             model_params=model_params,
             trainer_params=trainer_params,
-            ss_lightning_params=ss_lightning_params,
-            s_lightning_params=s_lightning_params,
+            lightning_params=lightning_params,
             exp_name=get_log_dir(args), # this is the name of the experiment.
                                         # you can change it to whatever you want using the function above.
                                         

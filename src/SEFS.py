@@ -19,8 +19,7 @@ class SEFS:
                  selection_prob,  # pre-selected selection probability. only used in self-supervision_phase phase
                  model_params,  # common for both phases
                  trainer_params,  # this is a dict containing all the parameters for both phases
-                 ss_lightning_params,
-                 s_lightning_params,
+                 lightning_params,
                  log_dir=BASE_DIR,  # default log directory
                  exp_name='',  # a string for indicating the name of the experiment
                  log_step=100,  # log every 100 steps
@@ -29,15 +28,11 @@ class SEFS:
                  ):
         
         torch.set_float32_matmul_precision('high')
-        
-        if 'batch_size' not in ss_lightning_params:
-            ss_lightning_params['batch_size'] = 32
 
-        if 'batch_size' not in s_lightning_params:
-            s_lightning_params['batch_size'] = 32
+        if 'batch_size' not in lightning_params:
+            lightning_params['batch_size'] = 32
 
-        ss_batch_size = ss_lightning_params.pop('batch_size')
-        s_batch_size = s_lightning_params.pop('batch_size')
+        batch_size = lightning_params.pop('batch_size')
 
         self.log_dir = f"{log_dir}/logs"
 
@@ -47,14 +42,14 @@ class SEFS:
             sub_dir="supervision_phase"
         )
 
-        train_iterables = {"unlabeled": train_data.get_self_supervision_dataloader(batch_size=s_batch_size),
-                         'labeled': train_data.get_supervision_dataloader(batch_size=s_batch_size)}
+        train_iterables = {"unlabeled": train_data.get_self_supervision_dataloader(batch_size=batch_size),
+                         'labeled': train_data.get_supervision_dataloader(batch_size=batch_size)}
 
         self.train_dl = CombinedLoader(train_iterables, mode='max_size_cycle')
 
         if val_data is not None:
-            val_iterables = {"unlabeled": val_data.get_self_supervision_dataloader(batch_size=s_batch_size, shuffle=False),
-                             'labeled': val_data.get_supervision_dataloader(batch_size=s_batch_size, shuffle=False)
+            val_iterables = {"unlabeled": val_data.get_self_supervision_dataloader(batch_size=batch_size, shuffle=False),
+                             'labeled': val_data.get_supervision_dataloader(batch_size=batch_size, shuffle=False)
             }
 
             self.val_dl = CombinedLoader(val_iterables, mode='sequential')
@@ -88,7 +83,7 @@ class SEFS:
             check_val_every_n_epoch=10,
             default_root_dir=self.log_dir,
             callbacks=[early_stopping],
-            **s_lightning_params
+            **lightning_params
         )
 
     def train(self):
