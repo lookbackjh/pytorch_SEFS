@@ -7,6 +7,9 @@ import torch.nn.functional as F
 import math
 
 
+EPS = 1e-6
+
+
 class STrainer(pl.LightningModule):
     def __init__(self,
                  x_mean, # column wise mean of the whole data
@@ -53,13 +56,17 @@ class STrainer(pl.LightningModule):
 
         eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
         
-        v = torch.matmul(self.L, eps)
+        v = torch.matmul(self.L, eps).transpose(0,1)
+        # v: (batch_size, x_dim)
         
         #generate a multivariate Gaussian random vector from gaussian copula
-        u = self.Gaussian_CDF(v)
+        u = self.Gaussian_CDF(v) + EPS
+
+        pi = pi.clamp(min=EPS, max=1-EPS)   # clamping pi for numerical stability dealing with log
 
         #relaxed multi-bernoulli distribution to make the gate vector differentiable
-        m=torch.sigmoid((torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau).T
+        m = F.sigmoid(
+            (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
 
         return m
     
@@ -72,18 +79,18 @@ class STrainer(pl.LightningModule):
         # shape: (x_dim, batch_size)
         
         # generate a multivariate Gaussian random vector
-        v = torch.matmul(self.L, eps)
-        # shape of self.L : (x_dim, batch_size)
+        v = torch.matmul(self.L, eps).transpose(0,1)
+        # shape of self.L : (batch_size, x_dim)
         
         # aplly element-wise Gaussian CDF
         u = self.Gaussian_CDF(v)
-        # shape of u: (x_dim, batch_size)
+        # shape of u: (batch_size, x_dim)
         
         # generate correlated binary gate, using a boolean mask
-        m = (u < self.pi[:, None]).float()
-        # shape of m: (x_dim, batch_size)
+        m = (u < self.pi).float()
+        # shape of m: (batch_size, x_dim)
         
-        return m.T
+        return m
 
     def validation_step(self, batch, batch_size):
         x, y = batch
@@ -93,8 +100,6 @@ class STrainer(pl.LightningModule):
         self.L = self._check_device(self.L)
 
         pi = self.model.get_pi()
-        ## clamp pi to be between 0 and 1
-        pi.data.clamp(0,1)
         
         self.x_mean = self._check_device(self.x_mean)
 
