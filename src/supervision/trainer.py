@@ -1,11 +1,8 @@
-from typing import Any, Optional
-
 from src.supervision.model import SEFS_S_Phase
 import lightning as pl
 import torch
 import torch.nn.functional as F
 import math
-
 
 EPS = 1e-6
 
@@ -131,9 +128,6 @@ class STrainer(pl.LightningModule):
         # logging losses
         self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
         self.log('supervision/val_y', loss_y, prog_bar=True, logger=False)
-
-        # log histogram of pi tensor
-        self.logger.experiment.add_histogram('supervision/val_pi', pi, self.current_epoch)
         
         return total_loss
 
@@ -180,14 +174,13 @@ class STrainer(pl.LightningModule):
         self.log('supervision/train_y', loss_y, prog_bar=True)
 
         # log histogram of pi tensor
-        self.logger.experiment.add_histogram('supervision/train_pi', pi, self.current_epoch)
+        self.logger.experiment.add_histogram('pi', pi, self.current_epoch)
         
         # for i in range(len(pi)):
         #     self.log(f"supervision/pi/{i}", pi[i], prog_bar=False)
         # logging every pi is a bad idead
 
         return total_loss
-
 
     def configure_optimizers(self):
         # need 3 different optimizers for 3 different parts
