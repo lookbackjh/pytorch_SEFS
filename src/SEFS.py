@@ -1,9 +1,7 @@
 from pathlib import Path
 
 import lightning as pl
-import numpy as np
 import torch
-from matplotlib import pyplot as plt
 
 from src.data.data_wrapper import DataWrapper
 from src.supervision.trainer import STrainer
@@ -140,30 +138,3 @@ class SEFS:
                                      val_dataloaders=self.val_s_dataloader
                                      )
 
-        # save the image of pi to tensorboard
-        pi_plot = self._plot_pi()
-        self.supervision_trainer.logger.experiment.add_image('image/pi', pi_plot)
-
-    def _plot_pi(self):
-        # plot bar graph of pi and return the image as numpy array
-        pi = self.supervision_phase.model.get_pi().squeeze(0)
-        pi = pi.detach().cpu().numpy()
-
-        fig, ax = plt.subplots(figsize=(10, 10))
-
-        ax.bar(np.arange(len(pi)), pi)
-
-        ax.set_xlabel('feature index')
-        ax.set_ylabel('pi')
-
-        canvas = fig.canvas
-        renderer = canvas.get_renderer()
-
-        canvas.draw()
-
-        buffer = renderer.buffer_rgba()
-
-        pi_plot = np.asarray(buffer)[:, :, :3]
-        # plt.show()    # uncomment this to show the plot
-        out = pi_plot.transpose(2, 0, 1)
-        return out
