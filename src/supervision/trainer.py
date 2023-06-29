@@ -208,7 +208,10 @@ class STrainer(pl.LightningModule):
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
-        ax.bar(np.arange(len(pi)), pi)
+        bars = ax.bar(np.arange(len(pi)), pi)
+
+        bars[0].set_color('r')
+        bars[10].set_color('r')
 
         ax.set_xlabel('feature index')
         ax.set_ylabel('pi')
