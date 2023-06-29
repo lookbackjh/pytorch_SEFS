@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import lightning as pl
-import numpy as np
 import torch
 
 from src.data.data_wrapper import DataWrapper
@@ -138,6 +137,4 @@ class SEFS:
                                      train_dataloaders=self.train_s_dataloader,
                                      val_dataloaders=self.val_s_dataloader
                                      )
-
-
 
