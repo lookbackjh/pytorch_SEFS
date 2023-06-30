@@ -127,7 +127,7 @@ class STrainer(pl.LightningModule):
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
 
-        beta = self.beta_coef
+        beta = self.beta
         total_loss = loss_y + beta * pi_reg
 
         return loss_y, total_loss
@@ -142,41 +142,7 @@ class STrainer(pl.LightningModule):
         return total_loss
 
     def training_step(self, batch, batch_size):
-<<<<<<< HEAD
-        x, y = batch
-        # what is the shape of x and y?
-        batch_size, x_dim = x.shape
-        
-        self.L = self._check_device(self.L)
-
-        pi = self.model.get_pi()
-        ## clamp pi to be between 0 and 1
-        pi.data.clamp(0,1)
-
-        self.x_mean = self._check_device(self.x_mean)
-        
-        # sample gate vector
-
-        # create a relaxed multi-bernoulli distribution for generating a mask
-        m = self.relaxed_multiBern(batch_size, x_dim, pi, 1.0)
-        # shape of m: (batch_sizex, x_dim)
-
-
-        # generate feature subset
-        x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
-
-        # get z from encoder
-        z = self.model.encoder(x_tilde)
-        
-        # estimate x_hat from decoder
-        y_hat_logit = self.model.predictor_linear(z).squeeze(1)
-
-        # compute loss
-        loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y,reduction='mean') # loss for y_hat
-        total_loss=loss_y+self.beta_coef*pi.sum(-1).mean()
-=======
         loss_y, total_loss = self.__forward(batch, batch_size)
->>>>>>> 839d650850c945a04632bdd875ce3708cb8ec104
 
         self.train_loss_y = loss_y.item()
         self.train_loss_total = total_loss.item()
