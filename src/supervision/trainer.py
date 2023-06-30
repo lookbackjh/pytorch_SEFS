@@ -127,8 +127,8 @@ class STrainer(pl.LightningModule):
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
 
-        beta = self.beta_coef
-        total_loss = loss_y + beta * pi_reg
+        beta = loss_y / pi_reg
+        total_loss = loss_y + beta.detach() * pi_reg
 
         return loss_y, total_loss
 

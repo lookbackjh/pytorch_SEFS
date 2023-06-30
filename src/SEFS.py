@@ -122,7 +122,7 @@ class SEFS:
     def train(self):
         self.self_supervision_phase_trainer.fit(self.self_supervision_phase,
                                                 train_dataloaders=self.train_ss_dataloader,
-                                                val_dataloaders=self.val_ss_dataloader
+                                                # val_dataloaders=self.val_ss_dataloader
                                                 )
 
         # load the trained weight of encoder from self-supervision_phase phase and assign to the supervision_phase phase
@@ -135,6 +135,6 @@ class SEFS:
 
         self.supervision_trainer.fit(self.supervision_phase,
                                      train_dataloaders=self.train_s_dataloader,
-                                     val_dataloaders=self.val_s_dataloader
+                                     # val_dataloaders=self.val_s_dataloader
                                      )
 
