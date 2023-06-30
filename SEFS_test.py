@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
     # lightning params
-    parser.add_argument("--epochs", type=int, default=10000, help="trainin epochs for supervision phase")
+    parser.add_argument("--epochs", type=int, default=500000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--gradient_clip_val", type=float, default=1.0, help="gradient clip value in l2 norm")
@@ -50,7 +50,7 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"beta-{args.beta}/no_pi_mean/l1_coef-{args.l1_coef}/logitpi"
+    exp_name = f"beta-{args.beta}/semi-supervision /l1_coef-{args.l1_coef}/logitpi/"
 
     return exp_name
 
@@ -112,7 +112,7 @@ def main():
             exp_name=get_log_dir(args), # this is the name of the experiment.
                                         # you can change it to whatever you want using the function above.
                                         
-            early_stopping_patience=1000
+            early_stopping_patience=10000
         )
 
         sefs.train()
