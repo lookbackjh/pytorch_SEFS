@@ -1,10 +1,13 @@
-from typing import Any, Optional
+import numpy as np
+from matplotlib import pyplot as plt
 
 from src.supervision.model import SEFS_S_Phase
 import lightning as pl
 import torch
 import torch.nn.functional as F
 import math
+
+EPS = 1e-6
 
 
 class STrainer(pl.LightningModule):
@@ -53,13 +56,17 @@ class STrainer(pl.LightningModule):
 
         eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
         
-        v = torch.matmul(self.L, eps)
+        v = torch.matmul(self.L, eps).transpose(0,1)
+        # v: (batch_size, x_dim)
         
         #generate a multivariate Gaussian random vector from gaussian copula
-        u = self.Gaussian_CDF(v)
+        u = self.Gaussian_CDF(v) + EPS
+
+        pi = pi.clamp(min=EPS, max=1-EPS)   # clamping pi for numerical stability dealing with log
 
         #relaxed multi-bernoulli distribution to make the gate vector differentiable
-        m=torch.sigmoid((torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau).T
+        m = F.sigmoid(
+            (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
 
         return m
     
@@ -72,20 +79,20 @@ class STrainer(pl.LightningModule):
         # shape: (x_dim, batch_size)
         
         # generate a multivariate Gaussian random vector
-        v = torch.matmul(self.L, eps)
-        # shape of self.L : (x_dim, batch_size)
+        v = torch.matmul(self.L, eps).transpose(0,1)
+        # shape of self.L : (batch_size, x_dim)
         
         # aplly element-wise Gaussian CDF
         u = self.Gaussian_CDF(v)
-        # shape of u: (x_dim, batch_size)
+        # shape of u: (batch_size, x_dim)
         
         # generate correlated binary gate, using a boolean mask
-        m = (u < self.pi[:, None]).float()
-        # shape of m: (x_dim, batch_size)
+        m = (u < self.pi).float()
+        # shape of m: (batch_size, x_dim)
         
-        return m.T
+        return m
 
-    def validation_step(self, batch, batch_size):
+    def __forward(self, batch, batch_size):
         x, y = batch
         # what is the shape of x and y?
         batch_size, x_dim = x.shape
@@ -94,8 +101,7 @@ class STrainer(pl.LightningModule):
 
         pi = self.model.get_pi()
         ## clamp pi to be between 0 and 1
-        pi.data.clamp(0,1)
-        
+
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
@@ -114,25 +120,29 @@ class STrainer(pl.LightningModule):
         z = self.model.encoder(x_tilde)
 
         # estimate x_hat from decoder
-        y_hat_logit = self.model.predictor_linear(z).squeeze(1)
+        y_hat_logit = self.model.predictor(z).squeeze(1)
+
+        pi_reg = pi.mean()
 
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
-        
-        l1_norm = self._l1_weight_norm()
-                
-        total_loss = loss_y + self.beta_coef * pi.sum(-1).mean() + self.l1_coef * l1_norm
+
+        beta = self.beta_coef
+        total_loss = loss_y + beta * pi_reg
+
+        return loss_y, total_loss
+
+    def validation_step(self, batch, batch_size):
+        loss_y, total_loss = self.__forward(batch, batch_size)
         
         # logging losses
         self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
         self.log('supervision/val_y', loss_y, prog_bar=True, logger=False)
-
-        # log histogram of pi tensor
-        self.logger.experiment.add_histogram('supervision/val_pi', pi, self.current_epoch)
         
         return total_loss
 
     def training_step(self, batch, batch_size):
+<<<<<<< HEAD
         x, y = batch
         # what is the shape of x and y?
         batch_size, x_dim = x.shape
@@ -164,6 +174,9 @@ class STrainer(pl.LightningModule):
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y,reduction='mean') # loss for y_hat
         total_loss=loss_y+self.beta_coef*pi.sum(-1).mean()
+=======
+        loss_y, total_loss = self.__forward(batch, batch_size)
+>>>>>>> 839d650850c945a04632bdd875ce3708cb8ec104
 
         self.train_loss_y = loss_y.item()
         self.train_loss_total = total_loss.item()
@@ -173,14 +186,9 @@ class STrainer(pl.LightningModule):
         self.log('supervision/train_y', loss_y, prog_bar=True)
 
         # log histogram of pi tensor
-        self.logger.experiment.add_histogram('supervision/train_pi', pi, self.current_epoch)
-        
-        # for i in range(len(pi)):
-        #     self.log(f"supervision/pi/{i}", pi[i], prog_bar=False)
-        # logging every pi is a bad idead
+        self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)
 
         return total_loss
-
 
     def configure_optimizers(self):
         # need 3 different optimizers for 3 different parts
@@ -192,3 +200,35 @@ class STrainer(pl.LightningModule):
         for param in self.model.parameters():
             l1_norm += torch.sum(torch.abs(param))
         return l1_norm
+
+    def on_train_end(self) -> None:
+        # save the image of pi to tensorboard
+        pi_plot = self._plot_pi()
+        self.logger.experiment.add_image('image/pi', pi_plot)
+
+    def _plot_pi(self):
+        # plot bar graph of pi and return the image as numpy array
+        pi = self.model.get_pi().squeeze(0)
+        pi = pi.detach().cpu().numpy()
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        bars = ax.bar(np.arange(len(pi)), pi)
+
+        bars[0].set_color('r')
+        bars[10].set_color('r')
+
+        ax.set_xlabel('feature index')
+        ax.set_ylabel('pi')
+
+        canvas = fig.canvas
+        renderer = canvas.get_renderer()
+
+        canvas.draw()
+
+        buffer = renderer.buffer_rgba()
+
+        pi_plot = np.asarray(buffer)[:, :, :3]
+        # plt.show()    # uncomment this to show the plot
+        out = pi_plot.transpose(2, 0, 1)
+        return out
