@@ -50,7 +50,7 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"beta-{args.beta}/semi-supervision /l1_coef-{args.l1_coef}/logitpi/"
+    exp_name = f"beta-{args.beta}/semi-supervision/l1_coef-{args.l1_coef}"
 
     return exp_name
 
