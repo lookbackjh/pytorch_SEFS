@@ -27,7 +27,7 @@ def parse_args():
 
     # trainer params
     parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
-    parser.add_argument("--beta", type=float, default=0.1, help="regularization coefficient for pi in supervision phase")
+    parser.add_argument("--beta", type=float, default=0.005, help="regularization coefficient for pi in supervision phase")
     parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
     parser.add_argument("--tau", type=float, default=1.0, help="temperature parameter for gumbel softmax")
     parser.add_argument("--loss_weight", type=float, default=1.0, help="loss weight coefficient for ss loss and s loss")
@@ -50,19 +50,29 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
+<<<<<<< HEAD
     exp_name = f"self_super/l1_coef-{args.l1_coef}"
+=======
+    exp_name = f"beta-{args.beta}/no_pi_mean/l1_coef-{args.l1_coef}/logitpi"
+>>>>>>> 839d650850c945a04632bdd875ce3708cb8ec104
 
     return exp_name
 
 
 def main():
+<<<<<<< HEAD
     for _l1_coef in [0.0, 0.1, 0.01, 0.001, 0.0001, 0.00001]:
+=======
+    for beta in [0.05]:
+        _l1_coef = 1e-5
+>>>>>>> 839d650850c945a04632bdd875ce3708cb8ec104
         data = DataWrapper(SyntheticData())
         # val_data = DataWrapper(SyntheticData(456))    # validation is currently not supported for semi-supervision
         val_data = None
         args = parse_args()
         
         args.l1_coef = _l1_coef
+        args.beta = beta
 
         # NOTE: if you want to change the default values of the parameters, you can do it here.
         # i.e., args.z_dim = 2**7
@@ -110,7 +120,7 @@ def main():
             exp_name=get_log_dir(args), # this is the name of the experiment.
                                         # you can change it to whatever you want using the function above.
                                         
-            early_stopping_patience=200
+            early_stopping_patience=10000
         )
 
         sefs.train()
