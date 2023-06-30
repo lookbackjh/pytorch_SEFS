@@ -1,13 +1,14 @@
 from typing import Any, Optional
-
+from matplotlib import pyplot as plt 
 from src.semi_supervision.model import SemiSEFS
 import lightning as pl
 import torch
 import torch.nn.functional as F
 import math
+import numpy as np
 
 
-EPS = 1e-6
+EPS = 1e-5
 
 
 class SemiSEFSTrainer(pl.LightningModule):
@@ -139,7 +140,7 @@ class SemiSEFSTrainer(pl.LightningModule):
         z = self.model.encoder(x_tilde)
 
         # estimate x_hat from decoder
-        y_hat_logit = self.model.predictor_linear(z).squeeze(1)
+        y_hat_logit = self.model.predictor(z).squeeze(1)
 
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
@@ -196,3 +197,35 @@ class SemiSEFSTrainer(pl.LightningModule):
         for param in self.model.parameters():
             l1_norm += torch.sum(torch.abs(param))
         return l1_norm
+    
+    def on_train_end(self) -> None:
+        # save the image of pi to tensorboard
+        pi_plot = self._plot_pi()
+        self.logger.experiment.add_image('image/pi', pi_plot)
+
+    def _plot_pi(self):
+        # plot bar graph of pi and return the image as numpy array
+        pi = self.model.get_pi().squeeze(0)
+        pi = pi.detach().cpu().numpy()
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        bars = ax.bar(np.arange(len(pi)), pi)
+
+        bars[0].set_color('r')
+        bars[10].set_color('r')
+
+        ax.set_xlabel('feature index')
+        ax.set_ylabel('pi')
+
+        canvas = fig.canvas
+        renderer = canvas.get_renderer()
+
+        canvas.draw()
+
+        buffer = renderer.buffer_rgba()
+
+        pi_plot = np.asarray(buffer)[:, :, :3]
+        # plt.show()    # uncomment this to show the plot
+        out = pi_plot.transpose(2, 0, 1)
+        return out
