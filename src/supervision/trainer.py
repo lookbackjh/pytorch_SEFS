@@ -119,14 +119,15 @@ class STrainer(pl.LightningModule):
         z = self.model.encoder(x_tilde)
 
         # estimate x_hat from decoder
-        y_hat_logit = self.model.predictor_linear(z).squeeze(1)
+        y_hat_logit = self.model.predictor(z).squeeze(1)
 
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
         
         l1_norm = self._l1_weight_norm()
+        pi_reg = pi.sum(-1).mean()
                 
-        total_loss = loss_y + self.beta_coef * pi.sum(-1).mean() + self.l1_coef * l1_norm
+        total_loss = loss_y + self.beta_coef * pi_reg + self.l1_coef * l1_norm
         
         # logging losses
         self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
@@ -162,13 +163,17 @@ class STrainer(pl.LightningModule):
         z = self.model.encoder(x_tilde)
         
         # estimate x_hat from decoder
-        y_hat_logit = self.model.predictor_linear(z).squeeze(1)
+        y_hat_logit = self.model.predictor(z).squeeze(1)
 
-        pi_reg = self.beta_coef*pi.sum(-1).mean()
+        pi_reg = pi.sum(-1).mean()
 
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y,reduction='mean') # loss for y_hat
-        total_loss= loss_y + pi_reg
+
+        # minmax normalize loss y
+        # loss_y = (loss_y - min_loss_y.min(1)) / (max_loss_y.min(1) - min_loss_y.min(1))
+
+        total_loss= loss_y +  self.beta_coef * pi_reg
 
         self.train_loss_y = loss_y.item()
         self.train_loss_total = total_loss.item()
