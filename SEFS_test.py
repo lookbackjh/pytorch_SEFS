@@ -25,7 +25,7 @@ def parse_args():
 
     # trainer params
     parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
-    parser.add_argument("--beta", type=float, default=0.1, help="regularization coefficient for pi in supervision phase")
+    parser.add_argument("--beta", type=float, default=0.005, help="regularization coefficient for pi in supervision phase")
     parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
     parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
@@ -48,19 +48,21 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"l1_coef-{args.l1_coef}"
+    exp_name = f"beta-{args.beta}/no_pi_mean/l1_coef-{args.l1_coef}/logitpi"
 
     return exp_name
 
 
 def main():
-    for _l1_coef in [0.0]:
+    for beta in [0.05]:
+        _l1_coef = 1e-5
         data = DataWrapper(SyntheticData())
         val_data = DataWrapper(SyntheticData(456))
 
         args = parse_args()
         
         args.l1_coef = _l1_coef
+        args.beta = beta
 
         # NOTE: if you want to change the default values of the parameters, you can do it here.
         # i.e., args.z_dim = 2**7
@@ -113,7 +115,7 @@ def main():
             exp_name=get_log_dir(args), # this is the name of the experiment.
                                         # you can change it to whatever you want using the function above.
                                         
-            early_stopping_patience=200
+            early_stopping_patience=10000
         )
 
         sefs.train()
