@@ -31,14 +31,14 @@ class SEFS_S_Phase(nn.Module):
 
         self.pi = torch.nn.Parameter(
             torch.tensor([
-                [0.5 for _  in range(self.x_dim)]
+                [0.0 for _  in range(self.x_dim)]
             ])
         )
         # pi: (1, x_dim)
 
-        # self.predictor = FCNet(self.z_dim, 1, self.num_layers_d, self.h_dim_d,
-        #                        in_layer_activation=self.fc_activate_fn,
-        #                        final_layer_activation=None)
+        self.predictor = FCNet(self.z_dim, 1, self.num_layers_d, self.h_dim_d,
+                                in_layer_activation=self.fc_activate_fn,
+                                final_layer_activation=None)
 
         self.predictor_linear = nn.Sequential(
             nn.Linear(self.z_dim, 1),
@@ -46,7 +46,8 @@ class SEFS_S_Phase(nn.Module):
 
     def get_pi(self):
         # returns pi
-        return self.pi
+
+        return torch.sigmoid(self.pi)
     
     def estimate_probability(self, x_tilde):
         return self.predictor(x_tilde)
