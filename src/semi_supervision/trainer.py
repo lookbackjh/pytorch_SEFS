@@ -32,6 +32,7 @@ class SemiSEFSTrainer(pl.LightningModule):
         self.tau = self.trainer_params['tau']   # temperature param for gumbel softmax in relaxed multi-bern
         self.loss_weight = self.trainer_params['loss_weight']
         self.optimizer_params = trainer_params['optimizer_params']
+        self.beta_coef=self.trainer_params['beta'] 
         
         self.x_mean = self._check_input_type(x_mean)  #x_mean: mean of the whole data, computed beforehand
         self.R = self._check_input_type(correlation_mat)# correlation matrix of the whole data ,computed beforehand
