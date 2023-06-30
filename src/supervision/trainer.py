@@ -92,7 +92,7 @@ class STrainer(pl.LightningModule):
         
         return m
 
-    def validation_step(self, batch, batch_size):
+    def __forward(self, batch, batch_size):
         x, y = batch
         # what is the shape of x and y?
         batch_size, x_dim = x.shape
@@ -100,7 +100,8 @@ class STrainer(pl.LightningModule):
         self.L = self._check_device(self.L)
 
         pi = self.model.get_pi()
-        
+        ## clamp pi to be between 0 and 1
+
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
@@ -121,13 +122,18 @@ class STrainer(pl.LightningModule):
         # estimate x_hat from decoder
         y_hat_logit = self.model.predictor(z).squeeze(1)
 
+        pi_reg = pi.mean()
+
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
-        
-        l1_norm = self._l1_weight_norm()
-        pi_reg = pi.sum(-1).mean()
-                
-        total_loss = loss_y + self.beta_coef * pi_reg + self.l1_coef * l1_norm
+
+        beta = self.beta_coef
+        total_loss = loss_y + beta * pi_reg
+
+        return loss_y, total_loss
+
+    def validation_step(self, batch, batch_size):
+        loss_y, total_loss = self.__forward(batch, batch_size)
         
         # logging losses
         self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
@@ -136,44 +142,7 @@ class STrainer(pl.LightningModule):
         return total_loss
 
     def training_step(self, batch, batch_size):
-        x, y = batch
-        # what is the shape of x and y?
-        batch_size, x_dim = x.shape
-        
-        self.L = self._check_device(self.L)
-
-        pi = self.model.get_pi()
-        ## clamp pi to be between 0 and 1
-
-        self.x_mean = self._check_device(self.x_mean)
-        
-        # sample gate vector
-
-        # create a relaxed multi-bernoulli distribution for generating a mask
-        m = self.relaxed_multiBern(batch_size, x_dim, pi, 1.0)
-        # shape of m: (batch_sizex, x_dim)
- 
-        # if m is greater than 0.5 want to make it 1
-        #m = (m > 0.5).float()
-
-        # generate feature subset
-        x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
-
-        # get z from encoder
-        z = self.model.encoder(x_tilde)
-        
-        # estimate x_hat from decoder
-        y_hat_logit = self.model.predictor(z).squeeze(1)
-
-        pi_reg = pi.sum(-1).mean()
-
-        # compute loss
-        loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y,reduction='mean') # loss for y_hat
-
-        # minmax normalize loss y
-        # loss_y = (loss_y - min_loss_y.min(1)) / (max_loss_y.min(1) - min_loss_y.min(1))
-
-        total_loss= loss_y +  self.beta_coef * pi_reg
+        loss_y, total_loss = self.__forward(batch, batch_size)
 
         self.train_loss_y = loss_y.item()
         self.train_loss_total = total_loss.item()
@@ -183,11 +152,7 @@ class STrainer(pl.LightningModule):
         self.log('supervision/train_y', loss_y, prog_bar=True)
 
         # log histogram of pi tensor
-        self.logger.experiment.add_histogram('pi', pi, self.current_epoch)
-        
-        # for i in range(len(pi)):
-        #     self.log(f"supervision/pi/{i}", pi[i], prog_bar=False)
-        # logging every pi is a bad idead
+        self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)
 
         return total_loss
 
