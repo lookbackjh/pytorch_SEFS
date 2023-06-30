@@ -144,13 +144,16 @@ class SemiSEFSTrainer(pl.LightningModule):
 
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
+        pi_reg = pi.mean()  # regularization term for pi
 
         prefix = 'train' if train is True else 'val'
+        beta = self.beta_coef
+        total_loss = loss_y + beta * pi_reg
 
         # logging losses
-        self.log(f'loss/{prefix}_y', loss_y, prog_bar=True)
+        self.log(f'loss/{prefix}_y', total_loss, prog_bar=True)
 
-        return loss_y
+        return total_loss
 
     def training_step(self, batch, batch_size):
         self.L = self._check_device(self.L)
