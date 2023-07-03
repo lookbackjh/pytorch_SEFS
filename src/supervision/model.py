@@ -31,7 +31,7 @@ class SEFS_S_Phase(nn.Module):
 
         self.pi = torch.nn.Parameter(
             torch.tensor([
-                [0.0 for _  in range(self.x_dim)]
+                [0.5 for _  in range(self.x_dim)]
             ])
         )
         # pi: (1, x_dim)
@@ -47,7 +47,7 @@ class SEFS_S_Phase(nn.Module):
     def get_pi(self):
         # returns pi
 
-        return torch.sigmoid(self.pi)
+        return self.pi
     
     def estimate_probability(self, x_tilde):
         return self.predictor(x_tilde)

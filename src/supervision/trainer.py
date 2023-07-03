@@ -69,28 +69,6 @@ class STrainer(pl.LightningModule):
             (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
 
         return m
-    
-    def multi_bern(self, batch_size, x_dim):
-        # self.pi: (x_dim)
-        # correltaion_matrix: (x_dim, x_dim)
-        
-        # draw a standard normal random vector for self-supervision_phase phase
-        eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
-        # shape: (x_dim, batch_size)
-        
-        # generate a multivariate Gaussian random vector
-        v = torch.matmul(self.L, eps).transpose(0,1)
-        # shape of self.L : (batch_size, x_dim)
-        
-        # aplly element-wise Gaussian CDF
-        u = self.Gaussian_CDF(v)
-        # shape of u: (batch_size, x_dim)
-        
-        # generate correlated binary gate, using a boolean mask
-        m = (u < self.pi).float()
-        # shape of m: (batch_size, x_dim)
-        
-        return m
 
     def __forward(self, batch, batch_size):
         x, y = batch
@@ -101,6 +79,8 @@ class STrainer(pl.LightningModule):
 
         pi = self.model.get_pi()
         ## clamp pi to be between 0 and 1
+
+        pi = pi.clamp(min=EPS, max=1-EPS)
 
         self.x_mean = self._check_device(self.x_mean)
 
@@ -128,7 +108,7 @@ class STrainer(pl.LightningModule):
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
 
         beta = loss_y / pi_reg
-        total_loss = loss_y + beta.detach() * pi_reg
+        total_loss = loss_y + beta * pi_reg
 
         return loss_y, total_loss
 
@@ -155,6 +135,9 @@ class STrainer(pl.LightningModule):
         self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)
 
         return total_loss
+
+    def on_train_epoch_end(self) -> None:
+        self.model.pi.data = self.model.pi.data.clamp(min=EPS, max=1-EPS)
 
     def configure_optimizers(self):
         # need 3 different optimizers for 3 different parts
