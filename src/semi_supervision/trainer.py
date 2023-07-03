@@ -109,12 +109,10 @@ class SemiSEFSTrainer(pl.LightningModule):
         # clamp pi to be between 0 and 1
 
         # sample gate vector
-        m = self.relaxed_multi_bern(batch_size, x_dim, pi.detach())
+        m = self.hard_multi_bern(batch_size, x_dim, pi.detach())
         # shape of m: (batch_sizex, x_dim)
         
         # generate feature subset
-        # NOTE: This part is different to the previous version of SEFS. It uses a soft-mask in [0, 1]
-        # NOTE: which is different from the hard mask
         x_tilde = torch.mul(m, batch) + torch.mul(1. - m, self.x_mean)
         
         # get z from encoder
@@ -153,7 +151,7 @@ class SemiSEFSTrainer(pl.LightningModule):
         # clamp pi to be between 0 and 1
 
         # create a relaxed multi-bernoulli distribution for generating a mask
-        m = self.hard_multi_bern(batch_size, x_dim, pi)
+        m = self.relaxed_multi_bern(batch_size, x_dim, pi)
         # shape of m: (batch_sizex, x_dim)
 
         # generate feature subset
