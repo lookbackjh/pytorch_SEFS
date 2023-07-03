@@ -78,7 +78,29 @@ class SemiSEFSTrainer(pl.LightningModule):
         m = F.sigmoid((1/self.tau) * _inner)
 
         return m
-        
+
+    def hard_multi_bern(self, batch_size, x_dim, pi):
+        # self.pi: (x_dim)
+        # correltaion_matrix: (x_dim, x_dim)
+
+        # draw a standard normal random vector for self-supervision_phase phase
+        eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
+        # shape: (x_dim, batch_size)
+
+        # generate a multivariate Gaussian random vector
+        v = torch.matmul(self.L, eps).transpose(0, 1)
+        # shape of self.L : (x_dim, batch_size)
+
+        # apply element-wise Gaussian CDF
+        u = self.Gaussian_CDF(v) + EPS
+        # shape of u: (x_dim, batch_size)
+
+        pi = pi.clamp(EPS, 1 - EPS)
+
+        m = (u < pi).float()
+
+        return m
+
     def cal_ss_loss(self, batch, batch_size, train=True):
         batch_size, x_dim = batch.shape
 
@@ -87,7 +109,7 @@ class SemiSEFSTrainer(pl.LightningModule):
         # clamp pi to be between 0 and 1
 
         # sample gate vector
-        m = self.relaxed_multi_bern(batch_size, x_dim, pi)
+        m = self.relaxed_multi_bern(batch_size, x_dim, pi.detach())
         # shape of m: (batch_sizex, x_dim)
         
         # generate feature subset
@@ -131,7 +153,7 @@ class SemiSEFSTrainer(pl.LightningModule):
         # clamp pi to be between 0 and 1
 
         # create a relaxed multi-bernoulli distribution for generating a mask
-        m = self.relaxed_multi_bern(batch_size, x_dim, pi)
+        m = self.hard_multi_bern(batch_size, x_dim, pi)
         # shape of m: (batch_sizex, x_dim)
 
         # generate feature subset
