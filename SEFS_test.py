@@ -32,7 +32,7 @@ def parse_args():
 
     # lightning params
     parser.add_argument("--ss_epochs", type=int, default=100000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=100000, help="trainin epochs for supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=10000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
@@ -54,10 +54,10 @@ def get_log_dir(args):
 
 
 def main():
-    for beta in [0.05]:
+    for beta in [0.005]:
         _l1_coef = 1e-5
-        data = DataWrapper(SyntheticData())
-        val_data = DataWrapper(SyntheticData(456))
+        data = DataWrapper(SyntheticData("opls"))
+        val_data = DataWrapper(SyntheticData("opls",456))
 
         args = parse_args()
         
