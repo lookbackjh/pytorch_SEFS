@@ -69,19 +69,8 @@ class Twomoon_synthetic:
         labeled_X = scaler.transform(labeled_X)
         unlabeled_X = scaler.transform(unlabeled_X)
 
-        return unlabeled_X, labeled_X, labeled_y
+        return labeled_X, labeled_y,unlabeled_X
 
-    def get_self_supervised_dataset(self):
-        return self.unlabeled_x.astype(np.float32)
-
-    def get_supervised_dataset(self):
-        return self.labeled_x.astype(np.float32), self.labeled_y.astype(np.float32)
-
-    def get_data_info(self):
-        x_mean = np.mean(self.unlabeled_x, axis=0)
-        x_dim = self.unlabeled_x.shape[1]
-        correlation_mat = np.corrcoef(self.unlabeled_x, rowvar=False)
-        return x_mean, x_dim, correlation_mat
 
 
 
