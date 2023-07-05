@@ -37,7 +37,7 @@ class SemiSEFSTrainer(pl.LightningModule):
         self.x_mean = self._check_input_type(x_mean)  #x_mean: mean of the whole data, computed beforehand
         self.R = self._check_input_type(correlation_mat)# correlation matrix of the whole data ,computed beforehand
         
-        self.L = torch.linalg.cholesky(self.R) # compute cholesky decomposition of correlation matrix beforehand
+        self.L = torch.linalg.cholesky(self.R+1e-4*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
 
     def _check_input_type(self, x):
         # check if the input is a torch tensor, if not, convert it to torch tensor
