@@ -58,7 +58,7 @@ class OPLS_synthetic:
             result_x.append(x33s)
         return np.array(result_x).reshape(sample_size,generation_size*3)
     
-    def create_data(self,size):
+    def create_data_part(self,size):
         y = np.random.binomial(1,0.4,size)
         x1_9=self.generate_x1_9(y)
         x10_30=self.generate_x10_30(y)
@@ -69,7 +69,7 @@ class OPLS_synthetic:
         x=np.concatenate([x1_30,x31_120,x121_390,x391_1000],axis=1)
         return x,y
     
-    def create_data_agg(self):
-        label_x,label_y=self.create_data(self.label_size)
-        unlabel_x,_=self.create_data(self.unlabel_size)
+    def create_data(self):
+        label_x,label_y=self.create_data_part(self.label_size)
+        unlabel_x,_=self.create_data_part(self.unlabel_size)
         return label_x,label_y,unlabel_x
