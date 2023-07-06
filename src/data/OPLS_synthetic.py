@@ -72,8 +72,8 @@ class OPLS_synthetic:
         return x,y
     
     def create_data(self):
-        label_x,label_y=self.create_data_part(self.label_size)
-        unlabel_x,_=self.create_data_part(self.unlabel_size)
+        labeled_X,label_y=self.create_data_part(self.label_size)
+        unlabeled_X,_=self.create_data_part(self.unlabel_size)
 
         scaler = MinMaxScaler()
 
@@ -81,4 +81,4 @@ class OPLS_synthetic:
 
         labeled_X = scaler.transform(labeled_X)
         unlabeled_X = scaler.transform(unlabeled_X)
-        return label_x,label_y,unlabel_x
+        return labeled_X,label_y,unlabeled_X
