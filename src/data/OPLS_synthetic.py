@@ -1,6 +1,6 @@
 import numpy as np
 
-
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # create OPLS cynthetic data class
 class OPLS_synthetic:
     def __init__(self, label_size,unlabel_size, seed=12345) -> None:
@@ -9,7 +9,8 @@ class OPLS_synthetic:
 
     def generate_x1_9(self,y):
         size=y.shape[0]
-        x1_9=[]        
+        x1_9=[]
+        #x1~x9 generation        
         for i in range(4):            
             xp=np.random.uniform(0,1,size)+0.8-2*y
             x1_9.append(xp)           
@@ -20,6 +21,7 @@ class OPLS_synthetic:
     
     def generate_x10_30(self,y):
         size=y.shape[0]
+        #x10~x30 generation
         sigma = np.array([[12,10,8],[10,12,10],[8,10,23]])
         x10_30 = []
         mu = np.array([1,2,3]).reshape(3,1)
@@ -65,11 +67,18 @@ class OPLS_synthetic:
         x1_30=np.concatenate([x1_9,x10_30],axis=1)
         x31_120=self.generate_composite(x1_30)
         x121_390=self.generate_composite(x31_120)
-        x391_1000 = np.random.normal(loc=0., scale=1.0, size=[size, 610])
+        x391_1000 = np.random.normal(loc=0., scale=1.0, size=[size, 610]) # low correlation with y
         x=np.concatenate([x1_30,x31_120,x121_390,x391_1000],axis=1)
         return x,y
     
     def create_data(self):
         label_x,label_y=self.create_data_part(self.label_size)
         unlabel_x,_=self.create_data_part(self.unlabel_size)
+
+        scaler = MinMaxScaler()
+
+        scaler.fit(np.concatenate([labeled_X, unlabeled_X], axis=0))
+
+        labeled_X = scaler.transform(labeled_X)
+        unlabeled_X = scaler.transform(unlabeled_X)
         return label_x,label_y,unlabel_x
