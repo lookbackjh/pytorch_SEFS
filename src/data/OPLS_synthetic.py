@@ -17,24 +17,27 @@ class OPLS_synthetic:
         for i in range(5):
             xp=np.random.uniform(0,1,size)-1.2-2*y
             x1_9.append(xp)
-        return np.array(x1_9).reshape(size,-1)
+        return np.array(x1_9).T
     
     def generate_x10_30(self,y):
         size=y.shape[0]
-        #x10~x30 generation
         sigma = np.array([[12,10,8],[10,12,10],[8,10,23]])
-        x10_30 = []
+        tot = []
         mu = np.array([1,2,3]).reshape(3,1)
         mu_new=np.multiply(mu,y.reshape(1,size))
         mu_new=mu_new.T
         for i in range(7):
-            temp = []
-            for i in range(size):
-                cur_mu=mu_new[i,:]
-                x = np.random.multivariate_normal(cur_mu,sigma,1)
-                temp.append(x)          
-            x10_30.append(temp)
-        x10_30=np.concatenate(x10_30,axis=1).reshape(size, -1)
+                temp = []
+                for j in range(size):
+                    cur_mu=mu_new[j,:]
+                    x = np.random.multivariate_normal(cur_mu,sigma,1)
+                    temp.append(x)
+                temp=np.array(temp).squeeze(1)       
+                tot.append(temp)
+
+        # np.array(tot) has shape (7,40,3) and i want to reshape it to (40,21)
+        x10_30=np.concatenate(tot,axis=1)
+        #x10_30=np.array(x10_30).T
         return x10_30
     
     def generate_composite(self, x):
