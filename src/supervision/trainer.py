@@ -59,7 +59,7 @@ class STrainer(pl.LightningModule):
 
         self.L = self._check_device(self.L)
 
-        pi = self.model.get_pi()
+        pi = self.model.get_pi(x)
         ## clamp pi to be between 0 and 1
 
         self.x_mean = self._check_device(self.x_mean)
@@ -114,7 +114,7 @@ class STrainer(pl.LightningModule):
         self.log('supervision/train_y', loss_y, prog_bar=True)
 
         # log histogram of pi tensor
-        self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)
+        self.logger.experiment.add_histogram('pi', self.model.get_pi(batch[0]), self.current_epoch)
 
         return total_loss
 
@@ -136,7 +136,7 @@ class STrainer(pl.LightningModule):
 
     def _plot_pi(self):
         # plot bar graph of pi and return the image as numpy array
-        pi = (1-self.mask)
+        pi = (1-self.mask.mean(0))
         pi = pi.detach().cpu().numpy()
 
         fig, ax = plt.subplots(figsize=(10, 10))
