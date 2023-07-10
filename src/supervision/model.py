@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-from src.models_common import FCNet, ACTIVATION_TABLE
+from src.models_common import FCNet, ACTIVATION_TABLE, MaskGenerator
 
 
 class SEFS_S_Phase(nn.Module):
@@ -29,13 +30,6 @@ class SEFS_S_Phase(nn.Module):
         self.encoder = FCNet(self.x_dim, self.z_dim, self.num_layers_e, self.h_dim_e,
                              in_layer_activation=self.fc_activate_fn)
 
-        self.pi = torch.nn.Parameter(
-            torch.tensor([
-                [0.0 for _  in range(self.x_dim)]
-            ])
-        )
-        # pi: (1, x_dim)
-
         self.predictor = FCNet(self.z_dim, 1, self.num_layers_d, self.h_dim_d,
                                 in_layer_activation=self.fc_activate_fn,
                                 final_layer_activation=None)
@@ -44,10 +38,14 @@ class SEFS_S_Phase(nn.Module):
             nn.Linear(self.z_dim, 1),
         )
 
-    def get_pi(self):
-        # returns pi
+        self.mask_generator = MaskGenerator()
 
-        return torch.sigmoid(self.pi)
+    def generate_mask(self, x):
+        return self.mask_generator(x)
+
+    def get_pi(self, x):
+        # returns pi
+        return (1-self.generate_mask(x)).detach()
     
     def estimate_probability(self, x_tilde):
         return self.predictor(x_tilde)

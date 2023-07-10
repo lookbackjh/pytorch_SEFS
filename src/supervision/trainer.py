@@ -51,46 +51,6 @@ class STrainer(pl.LightningModule):
     
     def Gaussian_CDF(self, x):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
-    
-    def relaxed_multiBern(self, batch_size,x_dim, pi,tau):
-
-        eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
-        
-        v = torch.matmul(self.L, eps).transpose(0,1)
-        # v: (batch_size, x_dim)
-        
-        #generate a multivariate Gaussian random vector from gaussian copula
-        u = self.Gaussian_CDF(v) + EPS
-
-        pi = pi.clamp(min=EPS, max=1-EPS)   # clamping pi for numerical stability dealing with log
-
-        #relaxed multi-bernoulli distribution to make the gate vector differentiable
-        m = F.sigmoid(
-            (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
-
-        return m
-    
-    def multi_bern(self, batch_size, x_dim):
-        # self.pi: (x_dim)
-        # correltaion_matrix: (x_dim, x_dim)
-        
-        # draw a standard normal random vector for self-supervision_phase phase
-        eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
-        # shape: (x_dim, batch_size)
-        
-        # generate a multivariate Gaussian random vector
-        v = torch.matmul(self.L, eps).transpose(0,1)
-        # shape of self.L : (batch_size, x_dim)
-        
-        # aplly element-wise Gaussian CDF
-        u = self.Gaussian_CDF(v)
-        # shape of u: (batch_size, x_dim)
-        
-        # generate correlated binary gate, using a boolean mask
-        m = (u < self.pi).float()
-        # shape of m: (batch_size, x_dim)
-        
-        return m
 
     def __forward(self, batch, batch_size):
         x, y = batch
@@ -107,7 +67,7 @@ class STrainer(pl.LightningModule):
         # sample gate vector
 
         # create a relaxed multi-bernoulli distribution for generating a mask
-        m = self.relaxed_multiBern(batch_size, x_dim, pi, 1.0)
+        m = self.model.generate_mask(x)
         # shape of m: (batch_sizex, x_dim)
 
         # if m is greater than 0.5 want to make it 1
@@ -121,14 +81,16 @@ class STrainer(pl.LightningModule):
 
         # estimate x_hat from decoder
         y_hat_logit = self.model.predictor(z).squeeze(1)
-
-        pi_reg = pi.mean()
-
+        
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
 
+        pi_reg = pi.sum(dim=1).mean()  # regularization term for pi
+        
         beta = self.beta_coef
-        total_loss = loss_y + beta * pi_reg
+        total_loss = loss_y  # + beta * pi_reg
+
+        self.mask = m
 
         return loss_y, total_loss
 
@@ -174,7 +136,7 @@ class STrainer(pl.LightningModule):
 
     def _plot_pi(self):
         # plot bar graph of pi and return the image as numpy array
-        pi = self.model.get_pi().squeeze(0)
+        pi = (1-self.mask)
         pi = pi.detach().cpu().numpy()
 
         fig, ax = plt.subplots(figsize=(10, 10))

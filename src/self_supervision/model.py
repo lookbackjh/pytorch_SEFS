@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-from src.models_common import FCNet, ACTIVATION_TABLE
+from src.models_common import FCNet, ACTIVATION_TABLE, MaskGenerator
 
 
 class SEFS_SS_Phase(nn.Module):
@@ -39,9 +39,13 @@ class SEFS_SS_Phase(nn.Module):
                                in_layer_activation=self.fc_activate_fn,
                                final_layer_activation=None)
 
+        self.mask_generator = MaskGenerator()
         # note that for generating a mask, we are supposed to use sigmoid activation
         # However, regarding with the numerical stability, we just output the logits and use BCE with logits
-        
+
+    def generate_mask(self, x):
+        return self.mask_generator(x)
+
     def estimate_feature_vec(self, x_tilde):
         return self.decoder_x(x_tilde)
     

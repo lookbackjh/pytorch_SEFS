@@ -78,7 +78,7 @@ class SSTrainer(pl.LightningModule):
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
-        m = self.multi_bern(batch_size, x_dim)
+        m = self.model.generate_mask(x)
         # shape of m: (batch_sizex, x_dim)
 
         # generate feature subset
@@ -97,7 +97,7 @@ class SSTrainer(pl.LightningModule):
         # compute loss
         loss_x = F.mse_loss(x_hat, x)
 
-        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, m)
+        loss_m = self.alpha_coef * F.cross_entropy(m_hat, m)
         # loss_m = -(m*torch.log(m_hat) + (1-m)*torch.log(1-m_hat)).sum(-1).mean()
         # replace the binary cross entropy with the commented line if you want to observe a similar loss scale for the original code
 

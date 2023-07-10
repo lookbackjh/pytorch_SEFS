@@ -31,8 +31,8 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
     # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=100000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=10000, help="trainin epochs for supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=10000, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=1000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
@@ -48,7 +48,7 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"beta-{args.beta}/no_pi_mean/l1_coef-{args.l1_coef}/logitpi"
+    exp_name = f"attn_mask/beta-{args.beta}/l1_coef-{args.l1_coef}"
 
     return exp_name
 
@@ -56,8 +56,8 @@ def get_log_dir(args):
 def main():
     for beta in [0.005]:
         _l1_coef = 1e-5
-        data = DataWrapper(SyntheticData("opls"))
-        val_data = DataWrapper(SyntheticData("opls",456))
+        data = DataWrapper(SyntheticData("twomoon"))
+        val_data = DataWrapper(SyntheticData("twomoon",456))
 
         args = parse_args()
         
