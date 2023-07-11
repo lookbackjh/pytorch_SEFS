@@ -98,8 +98,6 @@ class MaskGenerator(nn.Module):
         attn_out_score = self.attn_out_concat(attn_out_reshaped).reshape(batch_size, -1)
         # (batch_size, x_dim)
 
-        attn_out_score_clipped = torch.tanh(attn_out_score) * 10
+        attn_out_score_clipped = torch.sigmoid(attn_out_score)
 
-        mask_prob = F.gumbel_softmax(attn_out_score_clipped, tau=1, hard=False)
-
-        return mask_prob
+        return attn_out_score_clipped

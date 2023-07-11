@@ -40,12 +40,14 @@ class SEFS_S_Phase(nn.Module):
 
         self.mask_generator = MaskGenerator()
 
+        self.pi = nn.Parameter(torch.tensor([0.0 for _ in range(self.x_dim)]), requires_grad=True)
+
     def generate_mask(self, x):
         return self.mask_generator(x)
 
-    def get_pi(self, x):
+    def get_pi(self):
         # returns pi
-        return (1-self.generate_mask(x)).detach()
+        return torch.sigmoid(self.pi)
     
     def estimate_probability(self, x_tilde):
         return self.predictor(x_tilde)

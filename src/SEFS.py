@@ -127,10 +127,15 @@ class SEFS:
 
         # load the trained weight of encoder from self-supervision_phase phase and assign to the supervision_phase phase
         trained_encoder = self.self_supervision_phase.model.encoder
+
         # note that the whole weights are saved under self.log_dir/checkpoints
 
         self.supervision_phase.model.encoder.load_state_dict(
             trained_encoder.state_dict()
+        )
+
+        self.supervision_phase.model.mask_generator.load_state_dict(
+            self.self_supervision_phase.model.mask_generator.state_dict()
         )
 
         self.supervision_trainer.fit(self.supervision_phase,

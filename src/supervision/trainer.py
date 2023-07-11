@@ -52,6 +52,20 @@ class STrainer(pl.LightningModule):
     def Gaussian_CDF(self, x):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
 
+    def generate_mask(self, x):
+        tau = 1.0
+
+        u = self.model.generate_mask(x).detach()
+        # shape of u: (batch_size, x_dim)
+
+        pi = self.model.get_pi()
+
+        m = F.sigmoid(
+            (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
+
+        # shape of m: (batch_size, x_dim)
+        return m
+
     def __forward(self, batch, batch_size):
         x, y = batch
         # what is the shape of x and y?
@@ -59,7 +73,7 @@ class STrainer(pl.LightningModule):
 
         self.L = self._check_device(self.L)
 
-        pi = self.model.get_pi(x)
+        pi = self.model.get_pi()
         ## clamp pi to be between 0 and 1
 
         self.x_mean = self._check_device(self.x_mean)
@@ -67,7 +81,7 @@ class STrainer(pl.LightningModule):
         # sample gate vector
 
         # create a relaxed multi-bernoulli distribution for generating a mask
-        m = self.model.generate_mask(x)
+        m = self.generate_mask(x)
         # shape of m: (batch_sizex, x_dim)
 
         # if m is greater than 0.5 want to make it 1
@@ -85,12 +99,10 @@ class STrainer(pl.LightningModule):
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
 
-        pi_reg = pi.sum(dim=1).mean()  # regularization term for pi
+        pi_reg = pi.sum().mean()  # regularization term for pi
         
         beta = self.beta_coef
-        total_loss = loss_y  # + beta * pi_reg
-
-        self.mask = m
+        total_loss = loss_y + beta * pi_reg
 
         return loss_y, total_loss
 
@@ -114,7 +126,7 @@ class STrainer(pl.LightningModule):
         self.log('supervision/train_y', loss_y, prog_bar=True)
 
         # log histogram of pi tensor
-        self.logger.experiment.add_histogram('pi', self.model.get_pi(batch[0]), self.current_epoch)
+        self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)
 
         return total_loss
 
@@ -136,7 +148,7 @@ class STrainer(pl.LightningModule):
 
     def _plot_pi(self):
         # plot bar graph of pi and return the image as numpy array
-        pi = (1-self.mask.mean(0))
+        pi = self.model.get_pi()
         pi = pi.detach().cpu().numpy()
 
         fig, ax = plt.subplots(figsize=(10, 10))

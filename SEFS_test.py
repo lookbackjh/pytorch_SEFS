@@ -31,8 +31,8 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
     # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=10000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=1000, help="trainin epochs for supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=5000, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=2000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")

@@ -48,27 +48,19 @@ class SSTrainer(pl.LightningModule):
     def Gaussian_CDF(self, x):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
     
-    def multi_bern(self, batch_size, x_dim):
-        # self.pi: (x_dim)
-        # correltaion_matrix: (x_dim, x_dim)
-        
-        # draw a standard normal random vector for self-supervision_phase phase
-        eps = torch.normal(mean=0., std=1., size=[x_dim, batch_size]).to(self.device)
-        # shape: (x_dim, batch_size)
-        
-        # generate a multivariate Gaussian random vector
-        v = torch.matmul(self.L, eps)
-        # shape of self.L : (x_dim, batch_size)
-        
+    def generate_mask(self, x):
+
         # aplly element-wise Gaussian CDF
-        u = self.Gaussian_CDF(v)
-        # shape of u: (x_dim, batch_size)
+        u = self.model.generate_mask(x)
+        # shape of u: (batch_size, x_dim)
+
+        tau = 1.0
+        pi = self.pi
+
+        m = (u < pi[None, :]).float()
+        # shape of m: (batch_size, x_dim)
         
-        # generate correlated binary gate, using a boolean mask
-        m = (u < self.pi[:, None]).float()
-        # shape of m: (x_dim, batch_size)
-        
-        return m.T
+        return m
 
     def __forward(self, x, batch_size):
         batch_size, x_dim = x.shape
@@ -78,11 +70,13 @@ class SSTrainer(pl.LightningModule):
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
-        m = self.model.generate_mask(x)
+        m = self.generate_mask(x)
         # shape of m: (batch_sizex, x_dim)
 
+        tilde_mask = (F.sigmoid(m) > 0.5).to(dtype=torch.float32).detach()
+
         # generate feature subset
-        x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
+        x_tilde = torch.mul(tilde_mask, x) + torch.mul(1. - tilde_mask, self.x_mean)
 
         # get z from encoder
         z = self.model.encoder(x_tilde)
@@ -97,7 +91,7 @@ class SSTrainer(pl.LightningModule):
         # compute loss
         loss_x = F.mse_loss(x_hat, x)
 
-        loss_m = self.alpha_coef * F.cross_entropy(m_hat, m)
+        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, m)
         # loss_m = -(m*torch.log(m_hat) + (1-m)*torch.log(1-m_hat)).sum(-1).mean()
         # replace the binary cross entropy with the commented line if you want to observe a similar loss scale for the original code
 
@@ -123,7 +117,16 @@ class SSTrainer(pl.LightningModule):
         self.log('self-supervision/train_m', loss_m, prog_bar=True)
         self.log('self-supervision/train_total', total_loss, prog_bar=True)
         # self.log('loss/temp', temp, prog_bar=True)
-        
+
+        # for name, param in self.model.mask_generator.named_parameters():
+        #     if 'bias' in name:
+        #         continue
+        #
+        #     self.logger.experiment.add_histogram(f'mask_generator/{name}', param, self.current_epoch)
+        #
+        #     if param.grad is not None:
+        #         self.logger.experiment.add_histogram(f'mask_generator/{name}_grad', param.grad, self.current_epoch)
+
         return total_loss
     
     def configure_optimizers(self):
