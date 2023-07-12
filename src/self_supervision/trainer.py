@@ -31,7 +31,7 @@ class SSTrainer(pl.LightningModule):
         self.R = self._check_input_type(correlation_mat)# correlation matrix of the whole data ,computed beforehand
         
         self.L = torch.linalg.cholesky(self.R+1e-4*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
-        self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob) # selection probability for each feature, must be trained.
+        self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob).to(torch.float16) # selection probability for each feature, must be trained.
     
     def _check_input_type(self, x):
         # check if the input is a torch tensor, if not, convert it to torch tensor
@@ -49,18 +49,17 @@ class SSTrainer(pl.LightningModule):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
     
     def generate_mask(self, x):
-
-        # aplly element-wise Gaussian CDF
-        u = self.model.generate_mask(x)
+        u = self.model.generate_mask(x) # + noise[None, :].clip(1e-5, 1-1e-5)
         # shape of u: (batch_size, x_dim)
 
         tau = 1.0
-        pi = self.pi
+        pi = self.pi[None, :]
 
-        m = (u < pi[None, :]).float()
+        m = F.sigmoid(
+            (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
         # shape of m: (batch_size, x_dim)
         
-        return m
+        return u
 
     def __forward(self, x, batch_size):
         batch_size, x_dim = x.shape
@@ -73,10 +72,10 @@ class SSTrainer(pl.LightningModule):
         m = self.generate_mask(x)
         # shape of m: (batch_sizex, x_dim)
 
-        tilde_mask = (F.sigmoid(m) > 0.5).to(dtype=torch.float32).detach()
+        tilde_mask = (m < 0.5).to(torch.float32)
 
         # generate feature subset
-        x_tilde = torch.mul(tilde_mask, x) + torch.mul(1. - tilde_mask, self.x_mean)
+        x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
 
         # get z from encoder
         z = self.model.encoder(x_tilde)
@@ -91,7 +90,7 @@ class SSTrainer(pl.LightningModule):
         # compute loss
         loss_x = F.mse_loss(x_hat, x)
 
-        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, m)
+        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, tilde_mask)
         # loss_m = -(m*torch.log(m_hat) + (1-m)*torch.log(1-m_hat)).sum(-1).mean()
         # replace the binary cross entropy with the commented line if you want to observe a similar loss scale for the original code
 

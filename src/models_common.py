@@ -66,27 +66,38 @@ class MaskGenerator(nn.Module):
         non_linear_attn_embedding_dim = self.attn_dim // 2 * self.n_heads
 
         self.linear_relation_embedder = nn.Linear(1, attn_embedding_dim)
+
+        self.act = nn.ReLU()
+        mult_fact = 2 if self.act.__class__.__name__ == 'SwiGLU' else 1
+
         self.non_linear_relation_embedder = nn.Sequential(
-            nn.Linear(1, 2 * non_linear_attn_embedding_dim),
-            SwiGLU(),
+            nn.Linear(1, mult_fact * non_linear_attn_embedding_dim),
+            self.act,
             nn.Linear(non_linear_attn_embedding_dim, attn_embedding_dim)
         )
 
-        self.attn_out_concat = nn.Linear(attn_embedding_dim*2, 1)
+        self.attn_out_concat = nn.Linear(attn_embedding_dim, 1)
 
     def forward(self, x):
         # Caputre the relation of the data and mask some if they are noise
         # x: (batch_size, x_dim)
         batch_size = x.shape[0]
         x_dim = x.shape[1]
-        
+
+        device = x.device
+
         x = x.reshape(batch_size, -1, 1)
 
         linear_relation = self.linear_relation_embedder(x).reshape(batch_size, self.n_heads, -1, self.attn_dim)
         non_linear_relation = self.non_linear_relation_embedder(x).reshape(batch_size, self.n_heads, -1,
                                                                            self.attn_dim)
 
-        mixed_relation = torch.cat([linear_relation, non_linear_relation], dim=-1)
+        # mixed_relation = torch.cat([linear_relation,
+        #                             non_linear_relation
+        #                             ], dim=-1)
+        mixed_relation = linear_relation
+
+        # mixed_relation = linear_relation + non_linear_relation
         # mixed_relation: (batch_size, n_heads, x_dim, attn_dim * 2)
 
         attn_out = F.scaled_dot_product_attention(mixed_relation, mixed_relation, mixed_relation)
@@ -98,6 +109,12 @@ class MaskGenerator(nn.Module):
         attn_out_score = self.attn_out_concat(attn_out_reshaped).reshape(batch_size, -1)
         # (batch_size, x_dim)
 
-        attn_out_score_clipped = torch.sigmoid(attn_out_score)
+        # aplly element-wise Gaussian CDF
+        noise = torch.distributions.dirichlet.Dirichlet(
+            torch.ones(x.shape[1])).sample().to(device)
+
+        noise = torch.normal(0, 1, attn_out_score.shape).to(device)
+
+        attn_out_score_clipped = torch.sigmoid(attn_out_score + noise)
 
         return attn_out_score_clipped

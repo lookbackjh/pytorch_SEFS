@@ -55,8 +55,8 @@ class STrainer(pl.LightningModule):
     def generate_mask(self, x):
         tau = 1.0
 
-        u = self.model.generate_mask(x).detach()
-        # shape of u: (batch_size, x_dim)
+        u = self.model.generate_mask(x)
+        # u is a measure of how much the feature is good
 
         pi = self.model.get_pi()
 
@@ -99,7 +99,7 @@ class STrainer(pl.LightningModule):
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
 
-        pi_reg = pi.sum().mean()  # regularization term for pi
+        pi_reg = pi.sum()  # regularization term for pi
         
         beta = self.beta_coef
         total_loss = loss_y + beta * pi_reg
