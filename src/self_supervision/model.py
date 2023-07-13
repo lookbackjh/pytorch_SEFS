@@ -39,7 +39,7 @@ class SEFS_SS_Phase(nn.Module):
                                in_layer_activation=self.fc_activate_fn,
                                final_layer_activation=None)
 
-        self.mask_generator = MaskGenerator()
+        self.mask_generator = MaskGenerator(**model_params)
         # note that for generating a mask, we are supposed to use sigmoid activation
         # However, regarding with the numerical stability, we just output the logits and use BCE with logits
 

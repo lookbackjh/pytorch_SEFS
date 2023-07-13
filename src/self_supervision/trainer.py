@@ -32,6 +32,7 @@ class SSTrainer(pl.LightningModule):
         
         self.L = torch.linalg.cholesky(self.R+1e-4*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
         self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob).to(torch.float16) # selection probability for each feature, must be trained.
+        self.pi.requires_grad = False
     
     def _check_input_type(self, x):
         # check if the input is a torch tensor, if not, convert it to torch tensor
@@ -49,7 +50,7 @@ class SSTrainer(pl.LightningModule):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
     
     def generate_mask(self, x):
-        u = self.model.generate_mask(x) # + noise[None, :].clip(1e-5, 1-1e-5)
+        u = self.model.generate_mask(x)
         # shape of u: (batch_size, x_dim)
 
         tau = 1.0
@@ -57,9 +58,8 @@ class SSTrainer(pl.LightningModule):
 
         m = F.sigmoid(
             (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
-        # shape of m: (batch_size, x_dim)
-        
-        return u
+
+        return m, u
 
     def __forward(self, x, batch_size):
         batch_size, x_dim = x.shape
@@ -69,10 +69,10 @@ class SSTrainer(pl.LightningModule):
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
-        m = self.generate_mask(x)
+        m, u = self.generate_mask(x)
         # shape of m: (batch_sizex, x_dim)
 
-        tilde_mask = (m < 0.5).to(torch.float32)
+        tilde_mask = (u <= 0.5).to(torch.float32)
 
         # generate feature subset
         x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
@@ -97,6 +97,17 @@ class SSTrainer(pl.LightningModule):
         l1_norm = self._l1_weight_norm()
 
         total_loss = loss_x + self.alpha_coef * loss_m + self.l1_coef * l1_norm
+
+        # plot gradient of parameters except for bias
+        for name, param in self.model.mask_generator.named_parameters():
+            if 'bias' in name:
+                continue
+
+            if param.grad is not None:
+                self.logger.experiment.add_histogram(f'gradient/{name}', param.grad, self.current_epoch)
+
+            self.logger.experiment.add_histogram(f'parameter/{name}', param, self.current_epoch)
+            break
 
         return loss_x, loss_m, l1_norm, total_loss
 

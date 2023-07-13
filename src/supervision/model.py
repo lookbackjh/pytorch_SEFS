@@ -38,7 +38,7 @@ class SEFS_S_Phase(nn.Module):
             nn.Linear(self.z_dim, 1),
         )
 
-        self.mask_generator = MaskGenerator()
+        self.mask_generator = MaskGenerator(**model_params)
 
         self.pi = nn.Parameter(torch.tensor([0.0 for _ in range(self.x_dim)]), requires_grad=True)
 

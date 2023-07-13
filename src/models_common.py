@@ -55,28 +55,56 @@ class FCNet(nn.Module):
             x = layer(x)
         return x
 
+"""
+Create a class that is responsible for creating a sample of mask based on the interaction of the original input data.
+One must learn the relationships of the data and sample a mask based on that.
+The goal is to sample a mask in which highly dependent features are masked together.
+We may use attention mechanism to learn the relationships between features.
+
+"""
+
+
+
 
 class MaskGenerator(nn.Module):
-    def __init__(self):
+    """
+    This class is responsible for creating a sample of mask based on the interaction of the original input data.
+    One must learn the relationships of the data and sample a mask based on that.
+    The goal is to sample a mask in which highly dependent features are masked together.
+    We may use attention mechanism to learn the relationships between features.
+
+    """
+    def __init__(self, **model_params):
         super(MaskGenerator, self).__init__()
 
-        self.attn_dim = 32
-        self.n_heads = 4
-        attn_embedding_dim = self.attn_dim * self.n_heads
-        non_linear_attn_embedding_dim = self.attn_dim // 2 * self.n_heads
+        self.embed_dim = model_params['embed_dim']
+        self.n_heads = model_params['n_heads']
+        self.noise_std = model_params['noise_std']
 
-        self.linear_relation_embedder = nn.Linear(1, attn_embedding_dim)
+        self.attn_dim = self.embed_dim // self.n_heads
 
         self.act = nn.ReLU()
+
+        mult = 2
+
+        self.attention = nn.MultiheadAttention(self.embed_dim*mult, self.n_heads, dropout=0.1, bias=False, batch_first=True)
+        # self.attention = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, dim_feedforward=self.embed_dim*2,
+        #                                             activation=self.act, batch_first=True
+        #                                             )
+
+        self.linear_relation_embedder = nn.Linear(1, self.embed_dim)
+
         mult_fact = 2 if self.act.__class__.__name__ == 'SwiGLU' else 1
 
         self.non_linear_relation_embedder = nn.Sequential(
-            nn.Linear(1, mult_fact * non_linear_attn_embedding_dim),
+            nn.Linear(1, mult_fact * self.embed_dim),
             self.act,
-            nn.Linear(non_linear_attn_embedding_dim, attn_embedding_dim)
+            nn.Linear(self.embed_dim, self.embed_dim)
         )
 
-        self.attn_out_concat = nn.Linear(attn_embedding_dim, 1)
+        self.attn_out_concat = nn.Linear(self.embed_dim*mult, 1)
+
+
 
     def forward(self, x):
         # Caputre the relation of the data and mask some if they are noise
@@ -88,33 +116,38 @@ class MaskGenerator(nn.Module):
 
         x = x.reshape(batch_size, -1, 1)
 
-        linear_relation = self.linear_relation_embedder(x).reshape(batch_size, self.n_heads, -1, self.attn_dim)
-        non_linear_relation = self.non_linear_relation_embedder(x).reshape(batch_size, self.n_heads, -1,
-                                                                           self.attn_dim)
+        linear_relation = self.linear_relation_embedder(x)
+        non_linear_relation = self.non_linear_relation_embedder(x)
 
-        # mixed_relation = torch.cat([linear_relation,
-        #                             non_linear_relation
-        #                             ], dim=-1)
-        mixed_relation = linear_relation
+        mixed_relation = torch.cat([linear_relation,
+                                    non_linear_relation
+                                    ], dim=-1)
+
+        # mixed_relation = non_linear_relation
 
         # mixed_relation = linear_relation + non_linear_relation
         # mixed_relation: (batch_size, n_heads, x_dim, attn_dim * 2)
 
-        attn_out = F.scaled_dot_product_attention(mixed_relation, mixed_relation, mixed_relation)
-        # attn_out: (batch_size, n_heads, x_dim, attn_dim)
+        attn_output, attn_weight = self.attention(mixed_relation, mixed_relation, mixed_relation)
+        # attn_output: (batch, x_dim, embed_dim), attn_weight: (batch, x_dim, x_dim)
 
-        attn_out_reshaped = attn_out.permute(0, 2, 1, 3).reshape(batch_size, x_dim, -1)
-        # (batch_size, x_dim, attn_dim * n_heads)
+        # attn_output = self.attention(mixed_relation, mixed_relation, mixed_relation)
+        # attn_output: (batch, x_dim, embed_dim)
 
-        attn_out_score = self.attn_out_concat(attn_out_reshaped).reshape(batch_size, -1)
-        # (batch_size, x_dim)
+        attn_out_score = self.attn_out_concat(attn_output)
+        # (batch, x_dim, 1)
 
-        # aplly element-wise Gaussian CDF
-        noise = torch.distributions.dirichlet.Dirichlet(
-            torch.ones(x.shape[1])).sample().to(device)
+        # noise = torch.distributions.dirichlet.Dirichlet(
+        #     torch.ones(x.shape[1])).sample().to(device)
 
-        noise = torch.normal(0, 1, attn_out_score.shape).to(device)
+        if self.noise_std > 0:
+            noise = torch.normal(0, self.noise_std, attn_out_score.shape).to(device)
 
-        attn_out_score_clipped = torch.sigmoid(attn_out_score + noise)
+        else:
+            noise = 0
 
-        return attn_out_score_clipped
+        final_input = attn_out_score + noise
+
+        attn_out_score_clipped = torch.sigmoid(final_input)
+
+        return attn_out_score_clipped.reshape(batch_size, -1)

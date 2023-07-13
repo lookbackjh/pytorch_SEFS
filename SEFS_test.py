@@ -23,8 +23,13 @@ def parse_args():
     parser.add_argument("--fc_activate_fn", type=str, default="relu", choices=list(ACTIVATION_TABLE.keys()),
                         help="activation function in fully connected layers")
 
+    parser.add_argument("--embed_dim", type=int, default=64, help="dimension of embedding")
+    parser.add_argument("--n_heads", type=int, default=4, help="number of heads in multi-head attention")
+    parser.add_argument("--noise_std", type=float, default=0.5, help="standard deviation of noise")
+
+
     # trainer params
-    parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
+    parser.add_argument("--alpha", type=float, default=1, help="regularization coefficient for m in self-supervision phase")
     parser.add_argument("--beta", type=float, default=0.005, help="regularization coefficient for pi in supervision phase")
     parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
     parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
@@ -48,16 +53,17 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"attn_mask/ss-{args.ss_epochs}_s-{args.s_epochs}/beta-{args.beta}/l1_coef-{args.l1_coef}"
+    exp_name = f"attn_mask/ss-{args.ss_epochs}_s-{args.s_epochs}/beta-{args.beta}/" \
+               f"l1_coef-{args.l1_coef}/soft_m/noise-{args.noise_std}/u_detach/mixed"
 
     return exp_name
 
 
 def main():
-    for beta in [0.05]:
+    for beta in [0.000005]:
         _l1_coef = 1e-5
         data = DataWrapper(SyntheticData("twomoon"))
-        val_data = DataWrapper(SyntheticData("twomoon",456))
+        val_data = DataWrapper(SyntheticData("twomoon", 456))
 
         args = parse_args()
         
@@ -78,6 +84,10 @@ def main():
 
                 'dropout': args.dropout,
                 'fc_activate_fn': args.fc_activate_fn,
+
+                'embed_dim': args.embed_dim,
+                'n_heads': args.n_heads,
+                'noise_std': args.noise_std,
         }
 
         trainer_params = {
