@@ -55,7 +55,7 @@ class STrainer(pl.LightningModule):
     def generate_mask(self, x):
         tau = 1.0
 
-        u = self.model.generate_mask(x).detach()
+        u = self.model.generate_mask(x)
         # u is a measure of how much the feature is good
 
         pi = self.model.get_pi()

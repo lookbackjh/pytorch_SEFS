@@ -75,7 +75,7 @@ class SSTrainer(pl.LightningModule):
         tilde_mask = (u <= 0.5).to(torch.float32)
 
         # generate feature subset
-        x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
+        x_tilde = torch.mul(m, x) + torch.mul(1. - tilde_mask, self.x_mean)
 
         # get z from encoder
         z = self.model.encoder(x_tilde)
@@ -98,16 +98,16 @@ class SSTrainer(pl.LightningModule):
 
         total_loss = loss_x + self.alpha_coef * loss_m + self.l1_coef * l1_norm
 
-        # plot gradient of parameters except for bias
-        for name, param in self.model.mask_generator.named_parameters():
-            if 'bias' in name:
-                continue
-
-            if param.grad is not None:
-                self.logger.experiment.add_histogram(f'gradient/{name}', param.grad, self.current_epoch)
-
-            self.logger.experiment.add_histogram(f'parameter/{name}', param, self.current_epoch)
-            break
+        # # plot gradient of parameters except for bias
+        # for name, param in self.model.mask_generator.named_parameters():
+        #     if 'bias' in name:
+        #         continue
+        #
+        #     if param.grad is not None:
+        #         self.logger.experiment.add_histogram(f'gradient/{name}', param.grad, self.current_epoch)
+        #
+        #     self.logger.experiment.add_histogram(f'parameter/{name}', param, self.current_epoch)
+        #     break
 
         return loss_x, loss_m, l1_norm, total_loss
 

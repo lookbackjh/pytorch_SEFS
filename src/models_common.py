@@ -102,7 +102,7 @@ class MaskGenerator(nn.Module):
             nn.Linear(self.embed_dim, self.embed_dim)
         )
 
-        self.attn_out_concat = nn.Linear(self.embed_dim*mult, 1)
+        self.attn_out_concat = nn.Linear(self.embed_dim*mult, 1, bias=False)
 
 
 
@@ -134,14 +134,14 @@ class MaskGenerator(nn.Module):
         # attn_output = self.attention(mixed_relation, mixed_relation, mixed_relation)
         # attn_output: (batch, x_dim, embed_dim)
 
-        attn_out_score = self.attn_out_concat(attn_output)
-        # (batch, x_dim, 1)
+        attn_out_score = self.attn_out_concat(attn_output).reshape(batch_size, -1)
+        # (batch, x_dim)
 
         # noise = torch.distributions.dirichlet.Dirichlet(
         #     torch.ones(x.shape[1])).sample().to(device)
 
         if self.noise_std > 0:
-            noise = torch.normal(0, self.noise_std, attn_out_score.shape).to(device)
+            noise = torch.normal(0, self.noise_std, (1, x_dim)).to(device)
 
         else:
             noise = 0
@@ -150,4 +150,4 @@ class MaskGenerator(nn.Module):
 
         attn_out_score_clipped = torch.sigmoid(final_input)
 
-        return attn_out_score_clipped.reshape(batch_size, -1)
+        return attn_out_score_clipped

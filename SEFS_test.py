@@ -25,7 +25,7 @@ def parse_args():
 
     parser.add_argument("--embed_dim", type=int, default=64, help="dimension of embedding")
     parser.add_argument("--n_heads", type=int, default=4, help="number of heads in multi-head attention")
-    parser.add_argument("--noise_std", type=float, default=0.5, help="standard deviation of noise")
+    parser.add_argument("--noise_std", type=float, default=2, help="standard deviation of noise")
 
 
     # trainer params
@@ -54,7 +54,7 @@ def get_log_dir(args):
     # exp_name = f'test_{cur_time}'
     
     exp_name = f"attn_mask/ss-{args.ss_epochs}_s-{args.s_epochs}/beta-{args.beta}/" \
-               f"l1_coef-{args.l1_coef}/soft_m/noise-{args.noise_std}/u_detach/mixed"
+               f"l1_coef-{args.l1_coef}/soft_m/noise-{args.noise_std}/u-no_detach/mixed"
 
     return exp_name
 
