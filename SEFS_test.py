@@ -31,8 +31,8 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
     # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=100000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=10000, help="trainin epochs for supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=200000, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=200000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
@@ -48,7 +48,7 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"baseline/beta-{args.beta}/no_pi_mean/l1_coef-{args.l1_coef}/logitpi"
+    exp_name = f"baseline/beta-{args.beta}/pi_mean/l1_coef-{args.l1_coef}"
 
     return exp_name
 
