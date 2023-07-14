@@ -48,16 +48,16 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"beta-{args.beta}/no_pi_mean/l1_coef-{args.l1_coef}/logitpi"
+    exp_name = f"baseline/beta-{args.beta}/no_pi_mean/l1_coef-{args.l1_coef}/logitpi"
 
     return exp_name
 
 
 def main():
-    for beta in [0.005]:
+    for beta in [5]:
         _l1_coef = 1e-5
-        data = DataWrapper(SyntheticData("opls"))
-        val_data = DataWrapper(SyntheticData("opls",456))
+        data = DataWrapper(SyntheticData("twomoon"))
+        val_data = DataWrapper(SyntheticData("twomoon",456))
 
         args = parse_args()
         
