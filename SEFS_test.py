@@ -54,10 +54,10 @@ def get_log_dir(args):
 
 
 def main():
-    for beta in [0.005]:
+    for beta in [5]:
         _l1_coef = 1e-5
-        data = DataWrapper(SyntheticData("opls"))
-        val_data = DataWrapper(SyntheticData("opls",456))
+        data = DataWrapper(SyntheticData("twomoon"))
+        val_data = DataWrapper(SyntheticData("twomoon",456))
 
         args = parse_args()
         
