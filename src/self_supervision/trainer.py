@@ -50,7 +50,7 @@ class SSTrainer(pl.LightningModule):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
     
     def generate_mask(self, x):
-        u = self.model.generate_mask(x)
+        u, attn_dist = self.model.generate_mask(x)
         # shape of u: (batch_size, x_dim)
 
         tau = 1.0
@@ -59,7 +59,7 @@ class SSTrainer(pl.LightningModule):
         m = F.sigmoid(
             (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
 
-        return m, u
+        return m, u, attn_dist
 
     def __forward(self, x, batch_size):
         batch_size, x_dim = x.shape
@@ -69,13 +69,13 @@ class SSTrainer(pl.LightningModule):
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
-        m, u = self.generate_mask(x)
+        m, u, attn_dist = self.generate_mask(x)
         # shape of m: (batch_sizex, x_dim)
 
         tilde_mask = (u <= 0.5).to(torch.float32)
 
         # generate feature subset
-        x_tilde = torch.mul(m, x) + torch.mul(1. - tilde_mask, self.x_mean)
+        x_tilde = torch.mul(tilde_mask, x) + torch.mul(1. - tilde_mask, self.x_mean)
 
         # get z from encoder
         z = self.model.encoder(x_tilde)
@@ -96,7 +96,9 @@ class SSTrainer(pl.LightningModule):
 
         l1_norm = self._l1_weight_norm()
 
-        total_loss = loss_x + self.alpha_coef * loss_m + self.l1_coef * l1_norm
+        attn_entropy = torch.distributions.Categorical(attn_dist).entropy().mean()
+
+        total_loss = loss_x + self.alpha_coef * loss_m + self.l1_coef * l1_norm + 0.1 * attn_entropy
 
         # # plot gradient of parameters except for bias
         # for name, param in self.model.mask_generator.named_parameters():

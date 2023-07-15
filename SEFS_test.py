@@ -25,7 +25,7 @@ def parse_args():
 
     parser.add_argument("--embed_dim", type=int, default=64, help="dimension of embedding")
     parser.add_argument("--n_heads", type=int, default=4, help="number of heads in multi-head attention")
-    parser.add_argument("--noise_std", type=float, default=2, help="standard deviation of noise")
+    parser.add_argument("--noise_std", type=float, default=1, help="standard deviation of noise")
 
 
     # trainer params
@@ -37,7 +37,7 @@ def parse_args():
 
     # lightning params
     parser.add_argument("--ss_epochs", type=int, default=100000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=10000, help="trainin epochs for supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=50000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
@@ -54,13 +54,13 @@ def get_log_dir(args):
     # exp_name = f'test_{cur_time}'
     
     exp_name = f"attn_mask/ss-{args.ss_epochs}_s-{args.s_epochs}/beta-{args.beta}/" \
-               f"l1_coef-{args.l1_coef}/soft_m/noise-{args.noise_std}/u-no_detach/mixed"
+               f"l1_coef-{args.l1_coef}/hard_m/noise-{args.noise_std}/ss_u-detach/mixed/attn_entropy"
 
     return exp_name
 
 
 def main():
-    for beta in [0.000005]:
+    for beta in [5, 0.5, 0.05, 0.005]:
         _l1_coef = 1e-5
         data = DataWrapper(SyntheticData("twomoon"))
         val_data = DataWrapper(SyntheticData("twomoon", 456))
