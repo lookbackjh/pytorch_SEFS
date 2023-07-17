@@ -64,11 +64,11 @@ class KSTrainer(pl.LightningModule):
         # want to concat x, x_knockoff
 
 
-        x_knockoff=torch.rand(x.shape).to(self.device) # generate x_knockoff from uniform distribution
-        x_combination = torch.concat([x, x_knockoff], dim=1) # x_tilde is the concat of x and x_knockoff
+        #x_knockoff=torch.rand(x.shape).to(self.device) # generate x_knockoff from uniform distribution
+        #x_combination = torch.concat([x, x_knockoff], dim=1) # x_tilde is the concat of x and x_knockoff
 
         # get z from encoder
-        z=self.first_layer(x_combination) # z is the output of the first layer of the encoder
+        z=self.first_layer(x) # z is the output of the first layer of the encoder
 
 
 
@@ -116,7 +116,37 @@ class KSTrainer(pl.LightningModule):
         for param in self.model.parameters():
             l1_norm += torch.sum(torch.abs(param))
         return l1_norm
+    
+    def on_train_end(self) -> None:
+        # save the image of pi to tensorboard
+        fi_plot = self._plot_fi()
+        self.logger.experiment.add_image('image/pi', fi_plot)
 
+    def _plot_fi(self):
+        # plot bar graph of pi and return the image as numpy array
+        fi = self.model.feature_importance()
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        bars = ax.bar(np.arange(len(fi)), fi)
+
+        bars[0].set_color('r')
+        bars[10].set_color('r')
+
+        ax.set_xlabel('feature index')
+        ax.set_ylabel('fi')
+
+        canvas = fig.canvas
+        renderer = canvas.get_renderer()
+
+        canvas.draw()
+
+        buffer = renderer.buffer_rgba()
+
+        fi_plot = np.asarray(buffer)[:, :, :3]
+        # plt.show()    # uncomment this to show the plot
+        out = fi_plot.transpose(2, 0, 1)
+        return out
 
 
 

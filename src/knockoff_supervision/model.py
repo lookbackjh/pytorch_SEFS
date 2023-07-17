@@ -31,7 +31,6 @@ class KnockOff_S_Phase(nn.Module):
         self.filter_weights=nn.Parameter(torch.ones(2*self.x_dim))
         self.filter_weights.requires_grad=True
         self.idx=np.arange(2*self.x_dim)
-        np.random.shuffle(self.idx)
         self.feature_idx=self.idx[:self.x_dim]
         self.ko_inds=self.idx[self.x_dim:]
 
