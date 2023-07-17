@@ -2,6 +2,7 @@
 from src.data.twomoon_synthetic import Twomoon_synthetic
 from src.data.OPLS_synthetic import OPLS_synthetic
 import numpy as np
+import knockpy as kpy
 class SyntheticData:
 
     def __init__(self, datatype="twomoon",seed=12345) -> None:
@@ -22,3 +23,12 @@ class SyntheticData:
         x_dim = self.unlabeled_x.shape[1]
         correlation_mat = np.corrcoef(self.unlabeled_x, rowvar=False)
         return x_mean, x_dim, correlation_mat
+    
+    def get_knockoff_supervised_dataset(self):
+        k1=kpy.knockoffs.GaussianSampler(self.labeled_x)
+        x_tilde=k1.sample_knockoffs().astype(np.float32)
+        return np.concatenate([self.labeled_x,x_tilde],axis=1).astype(np.float32), self.labeled_y.astype(np.float32)
+
+
+        
+         

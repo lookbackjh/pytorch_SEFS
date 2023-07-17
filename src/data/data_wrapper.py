@@ -86,3 +86,24 @@ class DataWrapper:
         )
         # supervision_phase dataset must be wrapped by CustomDataset class to be used in dataloader
         return s_dataloader
+    
+    def get_knockoff_supervision_dataset(self):
+        
+        if isinstance(self.data, SyntheticData):
+            knockoff_supervision_data = self.data.get_knockoff_supervised_dataset()
+        
+        else:
+            raise NotImplementedError("Non-synthetic data is not supported yet")
+        return knockoff_supervision_data
+    
+    def get_knockoff_supervision_dataloader(self,batch_size,shuffle=True):
+        k_dataset = self.get_knockoff_supervision_dataset()
+        k_dataloader = DataLoader(
+            CustomDataset(*k_dataset), batch_size=100, shuffle=True
+        )
+        return k_dataloader
+
+
+
+    
+    
