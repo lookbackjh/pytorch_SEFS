@@ -1,14 +1,13 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from src.supervision.model import SEFS_S_Phase
+from src.knockoff_supervision.model import KnockOff_S_Phase
 import lightning as pl
 import torch
 import torch.nn.functional as F
 import math
 
 EPS = 1e-6
-
 
 class KSTrainer(pl.LightningModule):
     def __init__(self,
@@ -21,7 +20,7 @@ class KSTrainer(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.model = SEFS_S_Phase(
+        self.model = KnockOff_S_Phase(
             model_params=model_params
         )
         
@@ -49,6 +48,13 @@ class KSTrainer(pl.LightningModule):
             x = x.to(self.device)
         return x
     
+    def first_layer(self, x):
+        # first layer to get the weights of input vector sending to the filter nodes. 
+        x=x[:,self.model.idx]
+        x=self.model._fetch_filter_weight().unsqueeze(dim=0)*x
+        x=x[:,self.model.feature_idx]-x[:,self.model.ko_inds]
+        return x
+
     
     def __forward(self, batch, batch_size):
         x, y = batch
@@ -59,10 +65,12 @@ class KSTrainer(pl.LightningModule):
 
 
         x_knockoff=torch.rand(x.shape).to(self.device) # generate x_knockoff from uniform distribution
-        x_tilde = torch.concat(x, x_knockoff, dim=1) # x_tilde is the concat of x and x_knockoff
+        x_combination = torch.concat([x, x_knockoff], dim=1) # x_tilde is the concat of x and x_knockoff
 
         # get z from encoder
-        z = self.model.f_select(x_tilde)
+        z=self.first_layer(x_combination) # z is the output of the first layer of the encoder
+
+
 
         # estimate x_hat from decoder
         y_hat_logit = self.model.predictor(z).squeeze(1)
@@ -75,28 +83,28 @@ class KSTrainer(pl.LightningModule):
         return loss_y
 
     def validation_step(self, batch, batch_size):
-        loss_y, total_loss = self.__forward(batch, batch_size)
+        loss_y = self.__forward(batch, batch_size)
         
         # logging losses
-        self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
+        #self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
         self.log('supervision/val_y', loss_y, prog_bar=True, logger=False)
         
-        return total_loss
+        return loss_y
 
     def training_step(self, batch, batch_size):
-        loss_y, total_loss = self.__forward(batch, batch_size)
+        loss_y = self.__forward(batch, batch_size)
 
         self.train_loss_y = loss_y.item()
-        self.train_loss_total = total_loss.item()
         
         # logging losses
-        self.log('supervision/train_total', total_loss, prog_bar=True)
+        imp=self.model.feature_importance()
         self.log('supervision/train_y', loss_y, prog_bar=True)
-
+        self.log('supervision/feature_importance1',imp[0] , prog_bar=True)
+        self.log('supervision/feature_importance3',imp[2] , prog_bar=True)
         # log histogram of pi tensor
-        self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)
+        #self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)
 
-        return total_loss
+        return loss_y
 
     def configure_optimizers(self):
         # need 3 different optimizers for 3 different parts
