@@ -23,9 +23,12 @@ class SSTrainer(pl.LightningModule):
         )
         
         self.trainer_params = trainer_params
-        self.alpha_coef = self.trainer_params['alpha']  # alpha coef for gate vec loss
-        self.l1_coef = self.trainer_params['l1_coef'] # l1 norm regul. coef
+        self.alpha_coef = trainer_params['alpha']  # alpha coef for gate vec loss
+        self.l1_coef = trainer_params['l1_coef'] # l1 norm regul. coef
         self.optimizer_params = trainer_params['optimizer_params']
+        self.mask_type = trainer_params['mask_type']
+        self.ent_coef = trainer_params['ent_coef']
+
         
         self.x_mean = self._check_input_type(x_mean)  #x_mean: mean of the whole data, computed beforehand
         self.R = self._check_input_type(correlation_mat)# correlation matrix of the whole data ,computed beforehand
@@ -33,6 +36,7 @@ class SSTrainer(pl.LightningModule):
         self.L = torch.linalg.cholesky(self.R+1e-4*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
         self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob).to(torch.float16) # selection probability for each feature, must be trained.
         self.pi.requires_grad = False
+
     
     def _check_input_type(self, x):
         # check if the input is a torch tensor, if not, convert it to torch tensor
@@ -56,10 +60,10 @@ class SSTrainer(pl.LightningModule):
         tau = 1.0
         pi = self.pi[None, :]
 
-        m = F.sigmoid(
+        relaxed_mask = F.sigmoid(
             (torch.log(u)-torch.log(1-u)+torch.log(pi)-torch.log(1-pi))/tau)
 
-        return m, u, attn_dist
+        return relaxed_mask, u, attn_dist
 
     def __forward(self, x, batch_size):
         batch_size, x_dim = x.shape
@@ -69,13 +73,20 @@ class SSTrainer(pl.LightningModule):
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
-        m, u, attn_dist = self.generate_mask(x)
+        relaxed_mask, u, attn_dist = self.generate_mask(x)
         # shape of m: (batch_sizex, x_dim)
 
-        tilde_mask = (u <= 0.5).to(torch.float32)
+        if self.mask_type == 'hard':
+            m = (u <= 0.5).to(torch.float32)
+
+        elif self.mask_type == 'soft':
+            m = relaxed_mask
+
+        else:
+            raise ValueError(f'Invalid mask type: {self.mask_type}')
 
         # generate feature subset
-        x_tilde = torch.mul(tilde_mask, x) + torch.mul(1. - tilde_mask, self.x_mean)
+        x_tilde = torch.mul(m, x) + torch.mul(1. - m, self.x_mean)
 
         # get z from encoder
         z = self.model.encoder(x_tilde)
@@ -90,7 +101,7 @@ class SSTrainer(pl.LightningModule):
         # compute loss
         loss_x = F.mse_loss(x_hat, x)
 
-        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, tilde_mask)
+        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, m)
         # loss_m = -(m*torch.log(m_hat) + (1-m)*torch.log(1-m_hat)).sum(-1).mean()
         # replace the binary cross entropy with the commented line if you want to observe a similar loss scale for the original code
 
@@ -98,36 +109,28 @@ class SSTrainer(pl.LightningModule):
 
         attn_entropy = torch.distributions.Categorical(attn_dist).entropy().mean()
 
-        total_loss = loss_x + self.alpha_coef * loss_m + self.l1_coef * l1_norm + 0.1 * attn_entropy
+        total_loss = loss_x + self.alpha_coef * loss_m + self.l1_coef * l1_norm - self.ent_coef * attn_entropy
+        # we want to maximize the entropy of the attention distribution, so we add a negative sign
 
-        # # plot gradient of parameters except for bias
-        # for name, param in self.model.mask_generator.named_parameters():
-        #     if 'bias' in name:
-        #         continue
-        #
-        #     if param.grad is not None:
-        #         self.logger.experiment.add_histogram(f'gradient/{name}', param.grad, self.current_epoch)
-        #
-        #     self.logger.experiment.add_histogram(f'parameter/{name}', param, self.current_epoch)
-        #     break
-
-        return loss_x, loss_m, l1_norm, total_loss
+        return loss_x, loss_m, l1_norm, total_loss, attn_entropy
 
     def validation_step(self, x, batch_size):
-        loss_x, loss_m, l1_norm, total_loss = self.__forward(x, batch_size)
+        loss_x, loss_m, l1_norm, total_loss, attn_entropy = self.__forward(x, batch_size)
 
         # log reconstruction loss
         self.log('self-supervision/val_x', loss_x, prog_bar=True)
         self.log('self-supervision/val_m', loss_m, prog_bar=True)
         self.log('self-supervision/val_total', total_loss, prog_bar=True)
+        self.log('self-supervision/val_mask_entropy', attn_entropy, prog_bar=False)
         
     def training_step(self, x, batch_size):
-        loss_x, loss_m, l1_norm, total_loss = self.__forward(x, batch_size)
+        loss_x, loss_m, l1_norm, total_loss, attn_entropy = self.__forward(x, batch_size)
         
         # logging losses
         self.log('self-supervision/train_x', loss_x, prog_bar=True)
         self.log('self-supervision/train_m', loss_m, prog_bar=True)
         self.log('self-supervision/train_total', total_loss, prog_bar=True)
+        self.log('self-supervision/train_mask_entropy', attn_entropy, prog_bar=False)
         # self.log('loss/temp', temp, prog_bar=True)
 
         # for name, param in self.model.mask_generator.named_parameters():
@@ -145,10 +148,11 @@ class SSTrainer(pl.LightningModule):
         # need 3 different optimizers for 3 different parts
         encoder_optimizer = torch.optim.Adam(self.model.parameters(), lr=self.optimizer_params['lr'], weight_decay=self.optimizer_params['weight_decay'])
         return [encoder_optimizer], []
-        
 
     def _l1_weight_norm(self):
         l1_norm = 0.
+
         for param in self.model.parameters():
             l1_norm += torch.sum(torch.abs(param))
+            
         return l1_norm

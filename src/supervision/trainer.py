@@ -104,7 +104,10 @@ class STrainer(pl.LightningModule):
         pi_reg = pi.mean()  # regularization term for pi
         
         beta = self.beta_coef
-        total_loss = loss_y + beta * pi_reg
+
+        l1_norm = self._l1_weight_norm()
+
+        total_loss = loss_y + beta * pi_reg + self.l1_coef * l1_norm
 
         return loss_y, total_loss
 
@@ -139,8 +142,13 @@ class STrainer(pl.LightningModule):
     
     def _l1_weight_norm(self):
         l1_norm = 0.
-        for param in self.model.parameters():
+
+        for name, param in self.model.named_parameters():
+            if name == 'pi':    # don't penalize pi
+                continue
+
             l1_norm += torch.sum(torch.abs(param))
+
         return l1_norm
 
     def on_train_end(self) -> None:
