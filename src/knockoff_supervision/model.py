@@ -36,6 +36,14 @@ class KnockOff_S_Phase(nn.Module):
         self.ko_inds=self.idx[self.x_dim:]
 
 
+        mlp_layers = [nn.Linear(self.x_dim,self.z_dim) ]
+        for i in range(self.num_layers_d-1):
+            mlp_layers.append(nn.ReLU())
+            mlp_layers.append(nn.Linear(self.z_dim,self.z_dim))
+        mlp_layers.append(nn.ReLU())
+        mlp_layers.append(nn.Linear(self.z_dim,1))
+        self.mlp=nn.Sequential(*mlp_layers)
+
 
         self.predictor = FCNet(self.x_dim, 1, self.num_layers_d, self.h_dim_d,
                                 in_layer_activation=self.fc_activate_fn,
@@ -53,17 +61,19 @@ class KnockOff_S_Phase(nn.Module):
     def feature_importance(self, weight_scores=True):
         
         with torch.no_grad():
-            layers=list(self.predictor.named_children())
-            W=layers[0][1].weight.detach().numpy().T
+            layers=list(self.mlp.named_children())
+            W=layers[0][1].weight.cpu().numpy().T
             for layer in layers[1:]:
-                weight=layer[1].weight.detach().numpy().T
+                if isinstance(layer[1], nn.ReLU):
+                    continue
+                weight=layer[1].weight.cpu().numpy().T
                 W=np.dot(W,weight)
-                W=W.squeeze(-1)
-            Z = self._fetch_filter_weight().numpy()
+            W=W.squeeze(-1)
+            Z = self._fetch_filter_weight().cpu().numpy()
             feature_imp = Z[self.feature_idx] * W
             knockoff_imp = Z[self.ko_inds] * W
         
-        return feature_imp
+        return np.square(feature_imp-knockoff_imp)
         
 
 

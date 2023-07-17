@@ -73,7 +73,7 @@ class KSTrainer(pl.LightningModule):
 
 
         # estimate x_hat from decoder
-        y_hat_logit = self.model.predictor(z).squeeze(1)
+        y_hat_logit = self.model.mlp(z).squeeze(1)
 
 
         # compute loss

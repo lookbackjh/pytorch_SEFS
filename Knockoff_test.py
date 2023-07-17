@@ -12,12 +12,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model params
-    parser.add_argument("--z_dim", type=int, default=10, help="dimension of latent variable")
+    parser.add_argument("--z_dim", type=int, default=100, help="dimension of latent variable")
 
     parser.add_argument("--h_dim_e", type=int, default=100, help="dimension of hidden layers in encoder")
     parser.add_argument("--num_layers_e", type=int, default=3, help="number of hidden layers in encoder")
 
-    parser.add_argument("--h_dim_d", type=int, default=10, help="dimension of hidden layers in decoder")
+    parser.add_argument("--h_dim_d", type=int, default=100, help="dimension of hidden layers in decoder")
     parser.add_argument("--num_layers_d", type=int, default=3, help="number of hidden layers in decoder")
 
     parser.add_argument("--dropout", type=float, default=0.0, help="dropout rate")
