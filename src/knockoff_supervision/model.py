@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import numpy as np
 from src.models_common import FCNet, ACTIVATION_TABLE
 
 
@@ -26,8 +26,16 @@ class KnockOff_S_Phase(nn.Module):
             
             self.fc_activate_fn = self.activation_table[self.fc_activate_fn]
 
-        self.f_selector = nn.Linear(self.x_dim*2, self.x_dim, bias=False)
-        # f_selecotor : (x_dim*2, x_dim), sends the concatenated features(x,x_knockoff) to the feature selector
+
+        # to initialize weights for the first layer ( process of getting z, ztilde)
+        self.filter_weights=nn.Parameter(torch.ones(2*self.x_dim))
+        self.filter_weights.requires_grad=True
+        self.idx=np.arange(2*self.x_dim)
+        np.random.shuffle(self.idx)
+        self.feature_idx=self.idx[:self.x_dim]
+        self.ko_inds=self.idx[self.x_dim:]
+
+
 
         self.predictor = FCNet(self.x_dim, 1, self.num_layers_d, self.h_dim_d,
                                 in_layer_activation=self.fc_activate_fn,
@@ -38,6 +46,26 @@ class KnockOff_S_Phase(nn.Module):
             nn.Linear(self.z_dim, 1),
         )
     
+
+    def _fetch_filter_weight(self):
+        return self.filter_weights
     
-    def f_select(self, x):
-        return self.f_selector(x)
+    def feature_importance(self, weight_scores=True):
+        
+        with torch.no_grad():
+            layers=list(self.predictor.named_children())
+            W=layers[0][1].weight.detach().numpy().T
+            for layer in layers[1:]:
+                weight=layer[1].weight.detach().numpy().T
+                W=np.dot(W,weight)
+                W=W.squeeze(-1)
+            Z = self._fetch_filter_weight().numpy()
+            feature_imp = Z[self.feature_idx] * W
+            knockoff_imp = Z[self.ko_inds] * W
+        
+        return feature_imp
+        
+
+
+
+
