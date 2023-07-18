@@ -49,6 +49,17 @@ def parse_args():
     return parser.parse_args()
 
 
+def is_debug():
+    # check if debug mode is on
+    import sys
+
+    if sys.gettrace() is not None:
+        return True
+
+    else:
+        return False
+
+
 def get_log_dir(args):
     #
     # Do some jobs here with args to create a experiment name with the given arguments.
@@ -56,14 +67,7 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
 
-    # check if debug mode is on
-    import sys
-
-    if sys.gettrace() is not None:
-        debug = "debug"
-
-    else:
-        debug = ""
+    debug = "debug" if is_debug() else ""
 
     exp_name = f"{debug}/attn_mask/ss-{args.ss_epochs}-s-{args.s_epochs}/beta-{args.beta}/" \
                f"l1_coef-{args.l1_coef}/mask-{args.mask_type}/noise-{args.noise_std}/embedding-mixed/ent_coef-{args.ent_coef}"
@@ -81,10 +85,9 @@ def run(**param):
     data = DataWrapper(SyntheticData("twomoon"))
     # val_data = DataWrapper(SyntheticData("twomoon", 456))
     val_data = None
-
-    args.beta = param['beta']
-    args.ent_coef = param['ent_coef']
-    args.mask_type = param['mask_type']
+    
+    for k, v in param.items():
+        setattr(args, k, v)
 
     # NOTE: if you want to change the default values of the parameters, you can do it here.
     # i.e., args.z_dim = 2**7
@@ -151,19 +154,24 @@ def run(**param):
 
 def main():
     params = {
-        'beta': [5, 0.5, 0.05, 0.005, 0.0005, 1, 0.1, 0.01, 0.001, 0.0001, 0.00001],
+        'beta': [0.5],
         'ent_coef': [0, 0.1, 0.01],
         'mask_type': ['hard', 'soft'],
-        'noise_std': [0.1, 0.5, 1, 2, 4, 5],
+        'noise_std': [1, 2, 4],
     }
 
-    pool = mp.Pool(6)
+    if not is_debug():
+        pool = mp.Pool(5)
 
-    for param in dict_product(params):
-        pool.apply_async(run, kwds=param)
+        for param in dict_product(params):
+            pool.apply_async(run, kwds=param)
 
-    pool.close()
-    pool.join()
+        pool.close()
+        pool.join()
+
+    else:
+        for param in dict_product(params):
+            run(**param)
 
 
 

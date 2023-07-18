@@ -1,11 +1,14 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn.metrics import roc_auc_score
 
 from src.supervision.model import SEFS_S_Phase
 import lightning as pl
 import torch
 import torch.nn.functional as F
 import math
+
+from src.utils import cal_metrics
 
 EPS = 1e-6
 
@@ -109,19 +112,26 @@ class STrainer(pl.LightningModule):
 
         total_loss = loss_y + beta * pi_reg + self.l1_coef * l1_norm
 
-        return loss_y, total_loss
+        numpy_pred_y = F.sigmoid(y_hat_logit).detach().cpu().numpy()
+        true_Y = y.detach().cpu().numpy()
+        metric = roc_auc_score(true_Y, numpy_pred_y)
+
+        # metric = cal_metrics(true_Y=true_Y, pred_Y=numpy_pred_y, y_type='binary')
+
+        return loss_y, total_loss, metric
 
     def validation_step(self, batch, batch_size):
-        loss_y, total_loss = self.__forward(batch, batch_size)
+        loss_y, total_loss, metric = self.__forward(batch, batch_size)
         
         # logging losses
         self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
         self.log('supervision/val_y', loss_y, prog_bar=True, logger=False)
+        self.log('supervision/AUC', metric, prog_bar=True, logger=False)
         
         return total_loss
 
     def training_step(self, batch, batch_size):
-        loss_y, total_loss = self.__forward(batch, batch_size)
+        loss_y, total_loss, metric = self.__forward(batch, batch_size)
 
         self.train_loss_y = loss_y.item()
         self.train_loss_total = total_loss.item()
@@ -129,6 +139,7 @@ class STrainer(pl.LightningModule):
         # logging losses
         self.log('supervision/train_total', total_loss, prog_bar=True)
         self.log('supervision/train_y', loss_y, prog_bar=True)
+        self.log('supervision/AUC', metric, prog_bar=True, logger=True)
 
         # log histogram of pi tensor
         self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)

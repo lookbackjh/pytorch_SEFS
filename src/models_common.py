@@ -150,6 +150,6 @@ class MaskGenerator(nn.Module):
 
         attn_out_score_clipped = torch.sigmoid(final_input).detach()
 
-        attention_dist = F.softmax(final_input)
+        attention_dist = F.softmax(final_input, dim=-1)
 
         return attn_out_score_clipped, attention_dist

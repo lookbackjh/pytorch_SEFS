@@ -22,7 +22,7 @@ class SEFS:
                  s_lightning_params,
                  log_dir=BASE_DIR,  # default log directory
                  exp_name='',  # a string for indicating the name of the experiment
-                 log_step=100,  # log every 100 steps
+                 log_step=1,  # log every 100 steps
                  val_data = None,
                  early_stopping_patience=50,  # early stopping patience for both phases
                  ):
@@ -42,12 +42,16 @@ class SEFS:
 
         tb_logger_ss = TensorBoardLogger(
             save_dir=f"{self.log_dir}/{exp_name}",
-            sub_dir ="self_supervision"
+            version ="self_supervision"
+
+            # version=exp_name,
         )
 
         tb_logger_s = TensorBoardLogger(
             save_dir=f"{self.log_dir}/{exp_name}",
-            sub_dir="supervision"
+            # name=exp_name,
+            version="supervision"
+            # version=exp_name,
         )
 
         self.train_ss_dataloader = train_data.get_self_supervision_dataloader(batch_size=ss_batch_size)
@@ -87,6 +91,7 @@ class SEFS:
             check_val_every_n_epoch=100,
             default_root_dir=self.log_dir,
             callbacks=[ss_early_stopping],
+            log_every_n_steps=log_step,
             **ss_lightning_params
         )
 
@@ -114,6 +119,7 @@ class SEFS:
             check_val_every_n_epoch=100,
             default_root_dir=self.log_dir,
             callbacks=[s_early_stopping],
+            log_every_n_steps=log_step,
             **s_lightning_params
         )
 
