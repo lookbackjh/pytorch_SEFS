@@ -58,7 +58,8 @@ class SEFS:
         self.train_s_dataloader = train_data.get_supervision_dataloader(batch_size=s_batch_size)
 
         if val_data is not None:
-            self.val_ss_dataloader = val_data.get_self_supervision_dataloader(batch_size=ss_batch_size, shuffle=False)
+            # self.val_ss_dataloader = val_data.get_self_supervision_dataloader(batch_size=ss_batch_size, shuffle=False)
+            self.val_ss_dataloader = None   # only use valid data for supervision phase
             self.val_s_dataloader = val_data.get_supervision_dataloader(batch_size=s_batch_size, shuffle=False)
 
         else:

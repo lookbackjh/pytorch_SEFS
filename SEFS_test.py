@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument("--fc_activate_fn", type=str, default="relu", choices=list(ACTIVATION_TABLE.keys()),
                         help="activation function in fully connected layers")
 
-    parser.add_argument("--embed_dim", type=int, default=64, help="dimension of embedding")
+    parser.add_argument("--embed_dim", type=int, default=16, help="dimension of embedding")
     parser.add_argument("--n_heads", type=int, default=4, help="number of heads in multi-head attention")
     parser.add_argument("--noise_std", type=float, default=1, help="standard deviation of noise")
 
@@ -39,8 +39,8 @@ def parse_args():
     parser.add_argument("--ent_coef", type=float, default=0.1, help="coefficient for entropy regularization of the feature mask in SS phase")
 
     # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=100000, help="training epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=50000, help="training epochs for supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=50000, help="training epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=25000, help="training epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
@@ -70,7 +70,7 @@ def get_log_dir(args):
     debug = "debug" if is_debug() else ""
 
     exp_name = f"{debug}/attn_mask/ss-{args.ss_epochs}-s-{args.s_epochs}/beta-{args.beta}/" \
-               f"l1_coef-{args.l1_coef}/mask-{args.mask_type}/noise-{args.noise_std}/embedding-mixed/ent_coef-{args.ent_coef}"
+               f"l1_coef-{args.l1_coef}/mask-{args.mask_type}/noise-{args.noise_std}/embedding-mixed/ent_coef-{args.ent_coef}/v2"
 
     return exp_name
 
@@ -83,8 +83,7 @@ def run(**param):
     args = parse_args()
 
     data = DataWrapper(SyntheticData("twomoon"))
-    # val_data = DataWrapper(SyntheticData("twomoon", 456))
-    val_data = None
+    val_data = DataWrapper(SyntheticData("twomoon", 456))
     
     for k, v in param.items():
         setattr(args, k, v)
@@ -154,14 +153,15 @@ def run(**param):
 
 def main():
     params = {
-        'beta': [0.5],
-        'ent_coef': [0, 0.1, 0.01],
+        'beta': [5],
+        'ent_coef': [0.1, 0.01,0, -0.01, -0.1],
         'mask_type': ['hard', 'soft'],
-        'noise_std': [1, 2, 4],
+        # 'mask_type': ['soft'],
+        'noise_std': [0, 1, 2],
     }
 
     if not is_debug():
-        pool = mp.Pool(5)
+        pool = mp.Pool(4)
 
         for param in dict_product(params):
             pool.apply_async(run, kwds=param)
