@@ -77,7 +77,7 @@ class SSTrainer(pl.LightningModule):
         # shape of m: (batch_sizex, x_dim)
 
         if self.mask_type == 'hard':
-            m = (u <= 0.5).to(torch.float32)
+            m = (u.detach() <= 0.5).to(torch.float32)
 
         elif self.mask_type == 'soft':
             m = relaxed_mask
@@ -101,15 +101,20 @@ class SSTrainer(pl.LightningModule):
         # compute loss
         loss_x = F.mse_loss(x_hat, x)
 
-        loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, m)
+        if self.mask_type == 'hard':
+            loss_m = self.alpha_coef * F.binary_cross_entropy_with_logits(m_hat, m)
+
+        elif self.mask_type == 'soft':
+            loss_m = self.alpha_coef * F.mse_loss(m_hat, m)
+
         # loss_m = -(m*torch.log(m_hat) + (1-m)*torch.log(1-m_hat)).sum(-1).mean()
         # replace the binary cross entropy with the commented line if you want to observe a similar loss scale for the original code
 
         l1_norm = self._l1_weight_norm()
 
-        attn_entropy = torch.distributions.Categorical(attn_dist).entropy().mean()
+        attn_entropy = F.cross_entropy(attn_dist, attn_dist)
 
-        total_loss = loss_x + self.alpha_coef * loss_m + self.l1_coef * l1_norm - self.ent_coef * attn_entropy
+        total_loss = loss_x + self.alpha_coef * loss_m - self.ent_coef * attn_entropy + self.l1_coef * l1_norm
         # we want to maximize the entropy of the attention distribution, so we add a negative sign
 
         return loss_x, loss_m, l1_norm, total_loss, attn_entropy
@@ -130,7 +135,7 @@ class SSTrainer(pl.LightningModule):
         self.log('self-supervision/train_x', loss_x, prog_bar=True)
         self.log('self-supervision/train_m', loss_m, prog_bar=True)
         self.log('self-supervision/train_total', total_loss, prog_bar=True)
-        self.log('self-supervision/train_mask_entropy', attn_entropy, prog_bar=False)
+        self.log('self-supervision/train_mask_entropy', attn_entropy, prog_bar=True)
         # self.log('loss/temp', temp, prog_bar=True)
 
         # for name, param in self.model.mask_generator.named_parameters():

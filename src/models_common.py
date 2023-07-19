@@ -102,7 +102,7 @@ class MaskGenerator(nn.Module):
             nn.Linear(self.embed_dim, self.embed_dim)
         )
 
-        self.attn_out_concat = nn.Linear(self.embed_dim*mult, 1, bias=False)
+        self.attn_out_concat = nn.Linear(self.embed_dim*mult, 1, bias=True)
 
 
 
@@ -150,6 +150,6 @@ class MaskGenerator(nn.Module):
 
         attn_out_score_clipped = torch.sigmoid(final_input).detach()
 
-        attention_dist = F.softmax(final_input, dim=-1)
+        attention_dist = F.softmax(attn_out_score, dim=-1)
 
         return attn_out_score_clipped, attention_dist
