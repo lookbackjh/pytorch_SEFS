@@ -55,10 +55,10 @@ class STrainer(pl.LightningModule):
     def Gaussian_CDF(self, x):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
 
-    def generate_mask(self, x):
+    def generate_mask(self, x, add_noise=True):
         tau = 1.0
 
-        u, _ = self.model.generate_mask(x)
+        u, _ = self.model.generate_mask(x, add_noise=add_noise)
         # u is a measure of how much the feature is good
 
         u = u.detach()
@@ -71,7 +71,7 @@ class STrainer(pl.LightningModule):
         # shape of m: (batch_size, x_dim)
         return m
 
-    def __forward(self, batch, batch_size):
+    def __forward(self, batch, batch_size, add_noise):
         x, y = batch
         # what is the shape of x and y?
         batch_size, x_dim = x.shape
@@ -86,7 +86,7 @@ class STrainer(pl.LightningModule):
         # sample gate vector
 
         # create a relaxed multi-bernoulli distribution for generating a mask
-        m = self.generate_mask(x)
+        m = self.generate_mask(x, add_noise)
         # shape of m: (batch_sizex, x_dim)
 
         # if m is greater than 0.5 want to make it 1
@@ -121,7 +121,7 @@ class STrainer(pl.LightningModule):
         return loss_y, total_loss, metric
 
     def validation_step(self, batch, batch_size):
-        loss_y, total_loss, metric = self.__forward(batch, batch_size)
+        loss_y, total_loss, metric = self.__forward(batch, batch_size, add_noise=False)
         
         # logging losses
         self.log('supervision/val_total', total_loss, prog_bar=True, logger=False)
@@ -131,7 +131,8 @@ class STrainer(pl.LightningModule):
         return total_loss
 
     def training_step(self, batch, batch_size):
-        loss_y, total_loss, metric = self.__forward(batch, batch_size)
+        loss_y, total_loss, metric = self.__forward(batch, batch_size, add_noise=False)
+        # do not add noise in supervision phase when masking
 
         self.train_loss_y = loss_y.item()
         self.train_loss_total = total_loss.item()

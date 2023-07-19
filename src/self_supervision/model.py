@@ -43,8 +43,8 @@ class SEFS_SS_Phase(nn.Module):
         # note that for generating a mask, we are supposed to use sigmoid activation
         # However, regarding with the numerical stability, we just output the logits and use BCE with logits
 
-    def generate_mask(self, x):
-        return self.mask_generator(x)
+    def generate_mask(self, x, add_noise):
+        return self.mask_generator(x, add_noise)
 
     def estimate_feature_vec(self, x_tilde):
         return self.decoder_x(x_tilde)

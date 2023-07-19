@@ -53,8 +53,10 @@ class SSTrainer(pl.LightningModule):
     def Gaussian_CDF(self, x):
         return 0.5 * (1. + torch.erf(x / math.sqrt(2.)))
     
-    def generate_mask(self, x):
-        u, attn_dist = self.model.generate_mask(x)
+    def generate_mask(self, x, add_noise=True):
+        tau = 1.0
+
+        u, attn_dist = self.model.generate_mask(x, add_noise=add_noise)
         # shape of u: (batch_size, x_dim)
 
         tau = 1.0
@@ -65,7 +67,7 @@ class SSTrainer(pl.LightningModule):
 
         return relaxed_mask, u, attn_dist
 
-    def __forward(self, x, batch_size):
+    def __forward(self, x, batch_size, add_noise):
         batch_size, x_dim = x.shape
 
         self.L = self._check_device(self.L)
@@ -73,7 +75,7 @@ class SSTrainer(pl.LightningModule):
         self.x_mean = self._check_device(self.x_mean)
 
         # sample gate vector
-        relaxed_mask, u, attn_dist = self.generate_mask(x)
+        relaxed_mask, u, attn_dist = self.generate_mask(x, add_noise)
         # shape of m: (batch_sizex, x_dim)
 
         if self.mask_type == 'hard':
@@ -120,7 +122,7 @@ class SSTrainer(pl.LightningModule):
         return loss_x, loss_m, l1_norm, total_loss, attn_entropy
 
     def validation_step(self, x, batch_size):
-        loss_x, loss_m, l1_norm, total_loss, attn_entropy = self.__forward(x, batch_size)
+        loss_x, loss_m, l1_norm, total_loss, attn_entropy = self.__forward(x, batch_size, add_noise=False)
 
         # log reconstruction loss
         self.log('self-supervision/val_x', loss_x, prog_bar=True)
@@ -129,7 +131,7 @@ class SSTrainer(pl.LightningModule):
         self.log('self-supervision/val_mask_entropy', attn_entropy, prog_bar=False)
         
     def training_step(self, x, batch_size):
-        loss_x, loss_m, l1_norm, total_loss, attn_entropy = self.__forward(x, batch_size)
+        loss_x, loss_m, l1_norm, total_loss, attn_entropy = self.__forward(x, batch_size, add_noise=True)
         
         # logging losses
         self.log('self-supervision/train_x', loss_x, prog_bar=True)

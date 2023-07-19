@@ -106,7 +106,7 @@ class MaskGenerator(nn.Module):
 
 
 
-    def forward(self, x):
+    def forward(self, x, add_noise=True):
         # Caputre the relation of the data and mask some if they are noise
         # x: (batch_size, x_dim)
         batch_size = x.shape[0]
@@ -140,7 +140,7 @@ class MaskGenerator(nn.Module):
         # noise = torch.distributions.dirichlet.Dirichlet(
         #     torch.ones(x.shape[1])).sample().to(device)
 
-        if self.noise_std > 0:
+        if add_noise and self.noise_std > 0:
             noise = torch.normal(0, self.noise_std, (1, x_dim)).to(device)
 
         else:

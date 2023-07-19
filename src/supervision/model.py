@@ -42,8 +42,8 @@ class SEFS_S_Phase(nn.Module):
 
         self.pi = nn.Parameter(torch.tensor([0.0 for _ in range(self.x_dim)]), requires_grad=True)
 
-    def generate_mask(self, x):
-        return self.mask_generator(x)
+    def generate_mask(self, x, add_noise=True):
+        return self.mask_generator(x, add_noise)
 
     def get_pi(self):
         # returns pi

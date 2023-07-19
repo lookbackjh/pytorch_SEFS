@@ -81,6 +81,10 @@ def dict_product(dicts):
 
 def run(**param):
     args = parse_args()
+    
+    if is_debug():
+        args.ss_epochs = 100
+        args.s_epochs = 100
 
     data = DataWrapper(SyntheticData("twomoon"))
     val_data = DataWrapper(SyntheticData("twomoon", 456))
@@ -154,9 +158,8 @@ def run(**param):
 def main():
     params = {
         'beta': [5],
-        'ent_coef': [0.1, 0.01,0, -0.01, -0.1],
+        'ent_coef': [0.1, 0, -0.1],
         'mask_type': ['hard', 'soft'],
-        # 'mask_type': ['soft'],
         'noise_std': [0, 1, 2],
     }
 
