@@ -61,18 +61,18 @@ class KnockOff_S_Phase(nn.Module):
         
         with torch.no_grad():
             layers=list(self.mlp.named_children())
-            W=layers[0][1].weight.cpu().numpy().T
+            W=layers[0][1].weight.detach().cpu().numpy().T
             for layer in layers[1:]:
                 if isinstance(layer[1], nn.ReLU):
                     continue
-                weight=layer[1].weight.cpu().numpy().T
+                weight=layer[1].weight.detach().cpu().numpy().T
                 W=np.dot(W,weight)
             W=W.squeeze(-1)
             Z = self._fetch_filter_weight().cpu().numpy()
             feature_imp = Z[self.feature_idx] * W
             knockoff_imp = Z[self.ko_inds] * W
         
-        return np.square(feature_imp-knockoff_imp)
+        return feature_imp,knockoff_imp
         
 
 

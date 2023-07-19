@@ -41,6 +41,19 @@ class KSTrainer(pl.LightningModule):
         if not isinstance(x, torch.Tensor):
             x = torch.from_numpy(x).to(dtype=torch.float32)
         return x
+    def l1norm(self):
+        out = 0
+        for parameter in self.model.mlp.parameters():
+            out += torch.abs(parameter).sum()
+        out += torch.abs(self.model._fetch_filter_weight()).sum()  # This is just for stability
+        return out
+
+    def l2norm(self):
+        out = 0
+        for parameter in self.model.mlp.parameters():
+            out += (parameter ** 2).sum()
+        out += (self.model._fetch_filter_weight() ** 2).sum()
+        return out
     
     def _check_device(self, x):
         # check if the input is on the same device as the model
@@ -78,7 +91,7 @@ class KSTrainer(pl.LightningModule):
 
         # compute loss
         loss_y = F.binary_cross_entropy_with_logits(y_hat_logit, y, reduction='mean')  # loss for y_hat
-
+        loss_y=loss_y+self.l1_coef*self.l1norm() # add l1 norm regularization term
 
         return loss_y
 
@@ -97,8 +110,9 @@ class KSTrainer(pl.LightningModule):
         self.train_loss_y = loss_y.item()
         
         # logging losses
-        imp=self.model.feature_importance()
+        feature_imp,knockoff_imp=self.model.feature_importance()
         self.log('supervision/train_y', loss_y, prog_bar=True)
+        imp=(np.square(feature_imp)-np.square(knockoff_imp))
         self.log('supervision/feature_importance1',imp[0] , prog_bar=True)
         self.log('supervision/feature_importance3',imp[2] , prog_bar=True)
         # log histogram of pi tensor
@@ -124,8 +138,8 @@ class KSTrainer(pl.LightningModule):
 
     def _plot_fi(self):
         # plot bar graph of pi and return the image as numpy array
-        fi = self.model.feature_importance()
-
+        feature_imp,knockoff_imp = self.model.feature_importance()
+        fi=(abs(feature_imp)-abs(knockoff_imp))
         fig, ax = plt.subplots(figsize=(10, 10))
 
         bars = ax.bar(np.arange(len(fi)), fi)
