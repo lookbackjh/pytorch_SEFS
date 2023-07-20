@@ -159,6 +159,9 @@ class STrainer(pl.LightningModule):
             if name == 'pi':    # don't penalize pi
                 continue
 
+            if "mask_generator" in name:
+                continue
+
             l1_norm += torch.sum(torch.abs(param))
 
         return l1_norm

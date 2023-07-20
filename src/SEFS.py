@@ -51,7 +51,6 @@ class SEFS:
             save_dir=f"{self.log_dir}/{exp_name}",
             # name=exp_name,
             version="supervision"
-            # version=exp_name,
         )
 
         self.train_ss_dataloader = train_data.get_self_supervision_dataloader(batch_size=ss_batch_size)
