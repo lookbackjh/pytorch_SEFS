@@ -11,6 +11,13 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model params
+    parser.add_argument("--prob_type", type=str, default="deeppink", choices=["twomoon", "opls","deeppink"],)
+
+    # data size
+    parser.add_argument("--label_size", type=int, default=40, help="size of labeled data")
+    parser.add_argument("--unlabel_size", type=int, default=1000, help="size of unlabeled data")
+
+
     parser.add_argument("--z_dim", type=int, default=10, help="dimension of latent variable")
 
     parser.add_argument("--h_dim_e", type=int, default=100, help="dimension of hidden layers in encoder")
@@ -54,10 +61,10 @@ def get_log_dir(args):
 
 
 def main():
-    for beta in [5]:
+    for beta in [0.05]:
         _l1_coef = 1e-5
-        data = DataWrapper(SyntheticData("twomoon"))
-        val_data = DataWrapper(SyntheticData("twomoon",456))
+        data = DataWrapper(SyntheticData("twomoon",200,40,1000))
+        val_data = DataWrapper(SyntheticData("twomoon",200,40,100,456))
 
         args = parse_args()
         

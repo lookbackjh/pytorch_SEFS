@@ -19,6 +19,9 @@ class OPLS_synthetic:
             x1_9.append(xp)
         return np.array(x1_9).T
     
+    def get_feat_importance(self):
+        return np.arange(0,391,dtype=int)
+    
     def generate_x10_30(self,y):
         size=y.shape[0]
         sigma = np.array([[12,10,8],[10,12,10],[8,10,23]])

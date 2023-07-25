@@ -16,7 +16,8 @@ class STrainer(pl.LightningModule):
                  correlation_mat, # correlation matrix of the whole data
                  selection_prob,    # pre-selected selection probability
                  model_params,
-                 trainer_params
+                 trainer_params,
+                 imp_feature_idx
                  ) -> None:
         super().__init__()
         self.save_hyperparameters()
@@ -30,7 +31,7 @@ class STrainer(pl.LightningModule):
         self.beta_coef=self.trainer_params['beta'] # beta coef for controlling the number of feature selected.  
         self.l1_coef = self.trainer_params['l1_coef'] # l1 norm regul. coef
         self.optimizer_params = trainer_params['optimizer_params']
-        
+        self.imp_feature_idx = imp_feature_idx
         self.x_mean = self._check_input_type(x_mean)  #x_mean: mean of the whole data, computed beforehand
         self.R = self._check_input_type(correlation_mat) # correlation matrix of the whole data ,computed beforehand
 
@@ -174,15 +175,16 @@ class STrainer(pl.LightningModule):
 
     def _plot_pi(self):
         # plot bar graph of pi and return the image as numpy array
-        pi = self.model.get_pi().squeeze(0)
+        pi = self.model.get_pi()
         pi = pi.detach().cpu().numpy()
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
         bars = ax.bar(np.arange(len(pi)), pi)
 
-        bars[0].set_color('r')
-        bars[10].set_color('r')
+        if self.imp_feature_idx is not None:
+            for i in self.imp_feature_idx:
+                bars[i].set_color('r')
 
         ax.set_xlabel('feature index')
         ax.set_ylabel('pi')

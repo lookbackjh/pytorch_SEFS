@@ -108,7 +108,8 @@ class SEFS:
             correlation_mat=correlation_mat,
             selection_prob=selection_prob,
             model_params=model_params,
-            trainer_params=trainer_params
+            trainer_params=trainer_params,
+            imp_feature_idx=train_data.get_feature_importance()
         )
 
         self.supervision_trainer = pl.Trainer(

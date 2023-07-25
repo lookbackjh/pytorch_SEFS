@@ -40,6 +40,9 @@ class Twomoon_synthetic:
                 X_new = np.concatenate([X_new, X[:, [p]], tmp], axis=1)
 
         return X_new
+    
+    def get_feat_importance(self):
+        return np.array([0,10])
 
     def create_data(self, seed=12345, sigma_n=1.0, max_labeled_samples=10, blocksize=10, block_noise=0.3):
         labeled_X, labeled_y, _ = self.get_noisy_two_moons(n_samples=self.label_size, n_feats=10, noise_twomoon=0.1,

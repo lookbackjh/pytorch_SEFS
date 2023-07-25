@@ -86,3 +86,12 @@ class DataWrapper:
         )
         # supervision_phase dataset must be wrapped by CustomDataset class to be used in dataloader
         return s_dataloader
+    
+    def get_feature_importance(self):
+        
+        if isinstance(self.data, SyntheticData):
+            feat_importance = self.data.get_important_feature_idx()
+        else:
+            # error plea
+            raise NotImplementedError("Non-synthetic data is not supported yet")
+        return feat_importance
