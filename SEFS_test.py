@@ -5,16 +5,18 @@ from src.data.synthetic_data import SyntheticData
 from src.data.data_wrapper import DataWrapper
 from src.SEFS import SEFS
 from src.models_common import ACTIVATION_TABLE
-
-
+from src.supervision.model import SEFS_S_Phase
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    # model params
-    parser.add_argument("--prob_type", type=str, default="deeppink", choices=["twomoon", "opls","deeppink"],)
 
+
+    # model params
+    parser.add_argument("--prob_type", type=str, default="twomoon", choices=["twomoon", "opls","deeppink"],)
+    parser.add_argument("--seed",type=int,default=1)
     # data size
-    parser.add_argument("--label_size", type=int, default=40, help="size of labeled data")
+    parser.add_argument("--label_size", type=int, default=10, help="size of labeled data")
+    parser.add_argument("--noise", type=int, default=0.1, help="size of labeled data")
     parser.add_argument("--unlabel_size", type=int, default=1000, help="size of unlabeled data")
 
 
@@ -32,14 +34,14 @@ def parse_args():
 
     # trainer params
     parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
-    parser.add_argument("--beta", type=float, default=0.005, help="regularization coefficient for pi in supervision phase")
+    parser.add_argument("--beta", type=float, default=0.05, help="regularization coefficient for pi in supervision phase")
     parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
     parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
 
     # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=200000, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=200000, help="trainin epochs for supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=1, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=10000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
@@ -55,77 +57,100 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"baseline/beta-{args.beta}/pi_mean/l1_coef-{args.l1_coef}"
+    exp_name = f"baseline/beta-{args.beta}/l1_coef-{args.l1_coef}/ss_epochs-{args.ss_epochs}/seed-{args.seed}/label_size--{args.label_size}"
 
     return exp_name
 
 
 def main():
-    for beta in [0.05]:
+    means=[]
+    stds=[]
+    ss_candidate=[1,10000,30000,50000]
+    args = parse_args()
+    args.noise=0.3
+    for ssnum in ss_candidate:
         _l1_coef = 1e-5
-        data = DataWrapper(SyntheticData("twomoon",200,40,1000))
-        val_data = DataWrapper(SyntheticData("twomoon",200,40,100,456))
-
-        args = parse_args()
+        tprs=[]
         
-        args.l1_coef = _l1_coef
-        args.beta = beta
+        for seed in range(5):
+            args.seed=seed
+            data = DataWrapper(SyntheticData(args.prob_type,200,40,1000,args.seed))
+            val_data = DataWrapper(SyntheticData(args.prob_type,200,40,1000,456))
 
-        # NOTE: if you want to change the default values of the parameters, you can do it here.
-        # i.e., args.z_dim = 2**7
+            
+            args.ss_epochs=ssnum
+            args.l1_coef = _l1_coef
 
-        model_params = {
-                'x_dim': data.x_dim,
-                'z_dim': args.z_dim,
-                'h_dim_e': args.h_dim_e,
-                'num_layers_e': args.num_layers_e,
+            # NOTE: if you want to change the default values of the parameters, you can do it here.
+            # i.e., args.z_dim = 2**7
 
-                'h_dim_d': args.h_dim_d,
-                'num_layers_d': args.num_layers_d,
+            model_params = {
+                    'x_dim': data.x_dim,
+                    'z_dim': args.z_dim,
+                    'h_dim_e': args.h_dim_e,
+                    'num_layers_e': args.num_layers_e,
 
-                'dropout': args.dropout,
-                'fc_activate_fn': args.fc_activate_fn,
-        }
+                    'h_dim_d': args.h_dim_d,
+                    'num_layers_d': args.num_layers_d,
 
-        trainer_params = {
-                'alpha': args.alpha,
-                'beta': args.beta,
-                'l1_coef': args.l1_coef,
-                'optimizer_params': {
-                    'lr':  args.lr,
-                    'weight_decay': args.weight_decay,
-                },
+                    'dropout': args.dropout,
+                    'fc_activate_fn': args.fc_activate_fn,
             }
 
-        ss_lightning_params = {
-                'max_epochs': args.ss_epochs,
-                'precision': "16-mixed",
-                'gradient_clip_val': args.gradient_clip_val,
-                'batch_size': args.ss_batch_size,
-        }
+            trainer_params = {
+                    'alpha': args.alpha,
+                    'beta': args.beta,
+                    'l1_coef': args.l1_coef,
+                    'optimizer_params': {
+                        'lr':  args.lr,
+                        'weight_decay': args.weight_decay,
+                    },
+                }
 
-        s_lightning_params = {
-                'max_epochs': args.s_epochs,
-                'precision': "16-mixed",
-                'gradient_clip_val': args.gradient_clip_val,
-                'batch_size': args.s_batch_size,
-        }
+            ss_lightning_params = {
+                    'max_epochs': args.ss_epochs,
+                    'precision': "16-mixed",
+                    'gradient_clip_val': args.gradient_clip_val,
+                    'batch_size': args.ss_batch_size,
+            }
 
-        sefs = SEFS(
-            train_data=data,
-            val_data=val_data,
-            selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
-            model_params=model_params,
-            trainer_params=trainer_params,
-            ss_lightning_params=ss_lightning_params,
-            s_lightning_params=s_lightning_params,
-            exp_name=get_log_dir(args), # this is the name of the experiment.
-                                        # you can change it to whatever you want using the function above.
-                                        
-            early_stopping_patience=10000
-        )
+            s_lightning_params = {
+                    'max_epochs': args.s_epochs,
+                    'precision': "16-mixed",
+                    'gradient_clip_val': args.gradient_clip_val,
+                    'batch_size': args.s_batch_size,
+            }
 
-        sefs.train()
+            sefs = SEFS(
+                train_data=data,
+                val_data=val_data,
+                selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
+                model_params=model_params,
+                trainer_params=trainer_params,
+                ss_lightning_params=ss_lightning_params,
+                s_lightning_params=s_lightning_params,
+                exp_name=get_log_dir(args), # this is the name of the experiment.
+                                            # you can change it to whatever you want using the function above.
+                                            
+                early_stopping_patience=10000
+            )
+
+            sefs.train()
+            feat_imp_idx =data.get_feature_importance()
+            pi = sefs.supervision_phase.model.get_pi()
+            pi = pi.detach().cpu().numpy()
+            pi = pi.reshape(-1)
+            top2_idx = np.argsort(pi)[-2:]
+            tpr = len(set(top2_idx).intersection(set(feat_imp_idx)))/len(feat_imp_idx)
+            tprs.append(tpr)
+            print(tpr)
+        means.append(np.mean(tprs))
+        stds.append(np.std(tprs))
+    
+    for ssnum in range(len(ss_candidate)):
+        print(f"ss_epochs:{ssnum} mean:{means[ssnum]} std:{stds[ssnum]}")
+
+
 
 
 if __name__ == '__main__':
