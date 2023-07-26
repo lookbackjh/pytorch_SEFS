@@ -7,6 +7,7 @@ class Deep_Pink_synthetic:
         self.label_size=label_size
         self.unlabel_size=unlabel_size
         self.feat_dim=feat_dim
+        self.imp_feat_idx=np.random.choice(self.feat_dim, int(self.feat_dim*0.3), replace=False)
     
     def g(self,x) :
         # a nonlinear function to make relation between x and y nonlinear. 
@@ -26,7 +27,7 @@ class Deep_Pink_synthetic:
         epsilon=np.random.normal(loc=0., scale=1., size=[n,1])
         beta=np.zeros((self.feat_dim,1))
         # i WANT TO SET 30 percent of beta as nonzero value coming from N(0,1.5)
-        self.imp_feat_idx=np.random.choice(self.feat_dim, int(self.feat_dim*0.3), replace=False)
+        
         beta[self.imp_feat_idx, :] = np.random.normal(loc=0., scale=1.5, size=[int(self.feat_dim*0.3),1])
         Y=self.g(np.matmul(X_new, beta))+epsilon
         return X_new,Y
@@ -41,7 +42,12 @@ class Deep_Pink_synthetic:
         scaler = MinMaxScaler()
 
         scaler.fit(np.concatenate([labeled_X, unlabeled_X], axis=0))
-
+        
+        scaler2=MinMaxScaler()
+        scaler2.fit(label_y)
+        label_y=scaler2.transform(label_y)
+        
         labeled_X = scaler.transform(labeled_X)
         unlabeled_X = scaler.transform(unlabeled_X)
+
         return labeled_X,label_y,unlabeled_X
