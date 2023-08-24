@@ -176,7 +176,7 @@ class STrainer(pl.LightningModule):
     def _plot_pi(self):
         # plot bar graph of pi and return the image as numpy array
         pi = self.model.get_pi()
-        pi = pi.detach().cpu().numpy()
+        pi = pi.detach().cpu().numpy().reshape(-1)
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
