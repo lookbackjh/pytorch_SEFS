@@ -69,7 +69,7 @@ class Twomoon_synthetic:
 
         scaler = MinMaxScaler()
 
-        scaler.fit(np.concatenate([labeled_X], axis=0))
+        scaler.fit(np.concatenate([labeled_X,unlabeled_X], axis=0))
 
         labeled_X = scaler.transform(labeled_X)
         unlabeled_X = scaler.transform(unlabeled_X)

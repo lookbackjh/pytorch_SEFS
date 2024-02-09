@@ -22,12 +22,12 @@ def parse_args():
     #parser.add_argument("--unlabel_size", type=int, default=1000, help="size of unlabeled data")
 
 
-    parser.add_argument("--z_dim", type=int, default=10, help="dimension of latent variable")
+    parser.add_argument("--z_dim", type=int, default=100, help="dimension of latent variable")
 
     parser.add_argument("--h_dim_e", type=int, default=100, help="dimension of hidden layers in encoder")
     parser.add_argument("--num_layers_e", type=int, default=3, help="number of hidden layers in encoder")
 
-    parser.add_argument("--h_dim_d", type=int, default=10, help="dimension of hidden layers in decoder")
+    parser.add_argument("--h_dim_d", type=int, default=100, help="dimension of hidden layers in decoder")
     parser.add_argument("--num_layers_d", type=int, default=3, help="number of hidden layers in decoder")
 
     parser.add_argument("--dropout", type=float, default=0.0, help="dropout rate")
@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument("--noises", type=float ,default=0.3, help="noise level")
 
     # lightning params1
-    parser.add_argument("--ss_epochs", type=int, default=20000, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=0, help="trainin epochs for self-supervision phase")
     parser.add_argument("--s_epochs", type=int, default=100000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
