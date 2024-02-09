@@ -14,7 +14,7 @@ class Twomoon_synthetic:
         self.label_size=label_size
         self.unlabel_size=unlabel_size
         self.noises=noise
-        self.labeled_X, self.labeled_y, self.unlabeled_X = self.create_data(seed=seed)
+        #self.labeled_X, self.labeled_y, self.unlabeled_X = self.create_data(seed=seed)
         
     
     def get_noisy_two_moons(self, n_samples=1000, n_feats=100, noise_twomoon=0.1, noise_nuisance=1.0, seed_=1234):
@@ -56,20 +56,20 @@ class Twomoon_synthetic:
         unlabeled_X = self.get_blockcorr(unlabeled_X, blocksize, self.noises, seed + 1)
 
         # below is for creating a dataset with a few labeled samples
-        rand_gen = np.random.default_rng(seed)
+        # rand_gen = np.random.default_rng(seed)
 
-        true_label_idx = rand_gen.choice(np.where(labeled_y == 1)[0].tolist(), max_labeled_samples)
-        false_label_idx = rand_gen.choice(np.where(labeled_y == 0)[0].tolist(), max_labeled_samples)
+        # true_label_idx = rand_gen.choice(np.where(labeled_y == 1)[0].tolist(), max_labeled_samples)
+        # false_label_idx = rand_gen.choice(np.where(labeled_y == 0)[0].tolist(), max_labeled_samples)
 
-        total_labeled_idx = np.concatenate([true_label_idx, false_label_idx])
-        rand_gen.shuffle(total_labeled_idx)
+        # total_labeled_idx = np.concatenate([true_label_idx, false_label_idx])
+        # rand_gen.shuffle(total_labeled_idx)
 
-        labeled_X = labeled_X[total_labeled_idx]
-        labeled_y = labeled_y[total_labeled_idx]
+        # labeled_X = labeled_X[total_labeled_idx]
+        # labeled_y = labeled_y[total_labeled_idx]
 
         scaler = MinMaxScaler()
 
-        scaler.fit(np.concatenate([labeled_X, unlabeled_X], axis=0))
+        scaler.fit(np.concatenate([labeled_X], axis=0))
 
         labeled_X = scaler.transform(labeled_X)
         unlabeled_X = scaler.transform(unlabeled_X)

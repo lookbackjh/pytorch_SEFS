@@ -30,7 +30,7 @@ class SSTrainer(pl.LightningModule):
         self.x_mean = self._check_input_type(x_mean)  #x_mean: mean of the whole data, computed beforehand
         self.R = self._check_input_type(correlation_mat)# correlation matrix of the whole data ,computed beforehand
         
-        self.L = torch.linalg.cholesky(self.R+1e-4*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
+        self.L = torch.linalg.cholesky(self.R+1e-7*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
         self.pi = selection_prob if isinstance(selection_prob, torch.Tensor) else torch.from_numpy(selection_prob) # selection probability for each feature, must be trained.
     
     def _check_input_type(self, x):
