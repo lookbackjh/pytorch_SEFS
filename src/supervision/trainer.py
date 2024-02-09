@@ -35,7 +35,7 @@ class STrainer(pl.LightningModule):
         self.x_mean = self._check_input_type(x_mean)  #x_mean: mean of the whole data, computed beforehand
         self.R = self._check_input_type(correlation_mat) # correlation matrix of the whole data ,computed beforehand
 
-        self.L = torch.linalg.cholesky(self.R+1e-6*torch.eye(self.R.shape[1])) # compute cholesky decomposition of correlation matrix beforehand
+        self.L = self.R # compute cholesky decomposition of correlation matrix beforehand
         self.train_loss_y, self.train_loss_total = 0., 0.
         
     def _check_input_type(self, x):
@@ -151,6 +151,11 @@ class STrainer(pl.LightningModule):
         # logging losses
         self.log('supervision/train_total', total_loss, prog_bar=True)
         self.log('supervision/train_y', loss_y, prog_bar=True)
+                # log pi0 and pi10
+        pi= self.model.get_pi()
+
+        self.log('supervision/pi0', pi[0,0], prog_bar=True)
+        self.log('supervision/pi10', pi[0,10], prog_bar=True)
 
         # log histogram of pi tensor
         self.logger.experiment.add_histogram('pi', self.model.get_pi(), self.current_epoch)

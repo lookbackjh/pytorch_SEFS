@@ -35,19 +35,20 @@ def parse_args():
                         help="activation function in fully connected layers")
 
     # trainer params
-    parser.add_argument("--alpha", type=float, default=10, help="regularization coefficient for m in self-supervision phase")
+    parser.add_argument("--alpha", type=float, default=10
+                        , help="regularization coefficient for m in self-supervision phase")
     parser.add_argument("--beta", type=float, default=0.05, help="regularization coefficient for pi in supervision phase")
     parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
-    parser.add_argument("--lr", type=float, default=1e-5, help="learning rate")
+    parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
     parser.add_argument("--noises", type=float ,default=0.3, help="noise level")
 
     # lightning params1
-    parser.add_argument("--ss_epochs", type=int, default=0, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=100000, help="trainin epochs for supervision phase")
+    parser.add_argument("--ss_epochs", type=int, default=1, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=50000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
-    parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
+    parser.add_argument("--s_batch_size", type=int, default=1024, help="batch size for supervision phase")
     parser.add_argument("--gradient_clip_val", type=float, default=1.0, help="gradient clip value in l2 norm")
 
 
@@ -73,7 +74,7 @@ def main():
     #
 
     data = DataWrapper(SyntheticData(args,args.seed))
-    val_data = DataWrapper(SyntheticData(args,456))
+    val_data = None
 
 
     # NOTE: if you want to change the default values of the parameters, you can do it here.
