@@ -14,7 +14,7 @@ def parse_args():
 
     # model params
     parser.add_argument("--prob_type", type=str, default="twomoon", choices=["twomoon", "opls","deeppink"],)
-    parser.add_argument("--seed",type=int,default=1)
+    parser.add_argument("--seed",type=int,default=1234)
     # data size
     parser.add_argument("--num_label", type=int, default=40, help="number of labeled samples")
     parser.add_argument("--num_unlabel", type=int, default=1000, help="number of unlabeled samples")    
@@ -49,7 +49,7 @@ def parse_args():
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=1024, help="batch size for supervision phase")
-    parser.add_argument("--gradient_clip_val", type=float, default=1.0, help="gradient clip value in l2 norm")
+    parser.add_argument("--gradient_clip_val", type=float, default=0.0, help="gradient clip value in l2 norm")
 
 
     return parser.parse_args()

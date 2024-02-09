@@ -36,6 +36,7 @@ class STrainer(pl.LightningModule):
         self.R = self._check_input_type(correlation_mat) # correlation matrix of the whole data ,computed beforehand
 
         self.L = self.R # compute cholesky decomposition of correlation matrix beforehand
+        #self.L = torch.cholesky(self.R) # compute cholesky decomposition of correlation matrix beforehand we did not use this version because the dataaset is small and we can compute the cholesky decomposition of the correlation matrix beforehand.
         self.train_loss_y, self.train_loss_total = 0., 0.
         
     def _check_input_type(self, x):
@@ -63,7 +64,7 @@ class STrainer(pl.LightningModule):
         #generate a multivariate Gaussian random vector from gaussian copula
         u = self.Gaussian_CDF(v) + EPS
 
-        pi = pi.clamp(min=EPS, max=1-EPS)   # clamping pi for numerical stability dealing with log
+        #pi = pi.clamp(min=EPS, max=1-EPS)   # clamping pi for numerical stability dealing with log
 
         #relaxed multi-bernoulli distribution to make the gate vector differentiable
         m = F.sigmoid(
