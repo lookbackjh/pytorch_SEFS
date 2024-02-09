@@ -14,7 +14,7 @@ class Twomoon_synthetic:
         self.label_size=label_size
         self.unlabel_size=unlabel_size
         self.noises=noise
-        self.unlabeled_x, self.labeled_x, self.labeled_y = self.create_data(seed=seed)
+        self.labeled_X, self.labeled_y, self.unlabeled_X = self.create_data(seed=seed)
         
     
     def get_noisy_two_moons(self, n_samples=1000, n_feats=100, noise_twomoon=0.1, noise_nuisance=1.0, seed_=1234):

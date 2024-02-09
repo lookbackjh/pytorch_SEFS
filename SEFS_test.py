@@ -40,7 +40,7 @@ def parse_args():
     parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
     parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
-    parser.add_argument("--noises", type=float ,default=0.5, help="noise level")
+    parser.add_argument("--noises", type=float ,default=0.3, help="noise level")
 
     # lightning params1
     parser.add_argument("--ss_epochs", type=int, default=20000, help="trainin epochs for self-supervision phase")
@@ -61,7 +61,7 @@ def get_log_dir(args):
     # cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     # exp_name = f'test_{cur_time}'
     
-    exp_name = f"baseline/beta-{args.beta}/l1_coef-{args.l1_coef}/ss_epochs-{args.ss_epochs}/seed-{args.seed}/label_size--{args.num_unlabel}"
+    exp_name = f"baseline/beta-{args.beta}/l1_coef-{args.l1_coef}/ss_epochs-{args.ss_epochs}/seed-{args.seed}/label_size--{args.num_label}"
 
     return exp_name
 
