@@ -10,10 +10,12 @@ from sklearn.datasets import make_moons
 
 
 class Twomoon_synthetic:
-    def __init__(self,label_size,unlabel_size, seed=12345) -> None:
+    def __init__(self,label_size,unlabel_size,noise, seed=12345) -> None:
         self.label_size=label_size
         self.unlabel_size=unlabel_size
+        self.noises=noise
         self.unlabeled_x, self.labeled_x, self.labeled_y = self.create_data(seed=seed)
+        
     
     def get_noisy_two_moons(self, n_samples=1000, n_feats=100, noise_twomoon=0.1, noise_nuisance=1.0, seed_=1234):
         X, Y = make_moons(n_samples=n_samples, noise=noise_twomoon, random_state=seed_)
@@ -50,8 +52,8 @@ class Twomoon_synthetic:
         unlabeled_X, unlabeled_y, _ = self.get_noisy_two_moons(n_samples=self.unlabel_size, n_feats=10, noise_twomoon=0.1,
                                                                noise_nuisance=sigma_n, seed_=seed + 1)
 
-        labeled_X = self.get_blockcorr(labeled_X, blocksize, block_noise, seed)
-        unlabeled_X = self.get_blockcorr(unlabeled_X, blocksize, block_noise, seed + 1)
+        labeled_X = self.get_blockcorr(labeled_X, blocksize, self.noises, seed)
+        unlabeled_X = self.get_blockcorr(unlabeled_X, blocksize, self.noises, seed + 1)
 
         # below is for creating a dataset with a few labeled samples
         rand_gen = np.random.default_rng(seed)

@@ -6,6 +6,7 @@ from src.data.data_wrapper import DataWrapper
 from src.SEFS import SEFS
 from src.models_common import ACTIVATION_TABLE
 from src.supervision.model import SEFS_S_Phase
+from matplotlib import pyplot as plt
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -38,14 +39,17 @@ def parse_args():
     parser.add_argument("--l1_coef", type=float, default=0.0001, help="regularization coefficient for l1 norm of weights")
     parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-5, help="weight decay")
+    parser.add_argument("--noises", type=float ,default=0.3, help="noise level")
 
-    # lightning params
-    parser.add_argument("--ss_epochs", type=int, default=1, help="trainin epochs for self-supervision phase")
-    parser.add_argument("--s_epochs", type=int, default=10000, help="trainin epochs for supervision phase")
+    # lightning params1
+    parser.add_argument("--ss_epochs", type=int, default=50000, help="trainin epochs for self-supervision phase")
+    parser.add_argument("--s_epochs", type=int, default=50000, help="trainin epochs for supervision phase")
 
     parser.add_argument("--ss_batch_size", type=int, default=1024, help="batch size for self-supervision phase")
     parser.add_argument("--s_batch_size", type=int, default=32, help="batch size for supervision phase")
     parser.add_argument("--gradient_clip_val", type=float, default=1.0, help="gradient clip value in l2 norm")
+    parser.add_argument("--num_label", type=int, default=40, help="number of labeled samples")
+    parser.add_argument("--num_unlabel", type=int, default=1000, help="number of unlabeled samples")    
 
     return parser.parse_args()
 
@@ -65,9 +69,11 @@ def get_log_dir(args):
 def main():
 
     #args.seed=seed
-    args=parse_args("")
-    data = DataWrapper(SyntheticData(args.prob_type,200,40,1000,args.seed))
-    val_data = DataWrapper(SyntheticData(args.prob_type,200,40,1000,456))
+    args=parse_args()
+    #
+
+    data = DataWrapper(SyntheticData(args,args.seed))
+    val_data = DataWrapper(SyntheticData(args,456))
 
 
     # NOTE: if you want to change the default values of the parameters, you can do it here.
@@ -129,9 +135,7 @@ def main():
     pi = sefs.supervision_phase.model.get_pi()
     pi = pi.detach().cpu().numpy()
     pi = pi.reshape(-1)
-    top2_idx = np.argsort(pi)[-2:]
-    print(feat_imp_idx)
-    print(top2_idx)
+    plt.bar(range(len(pi)),pi)
 
     
 
