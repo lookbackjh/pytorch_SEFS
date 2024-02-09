@@ -27,8 +27,8 @@ You can add and implement your own datset after checking up the codes in `src/da
 ## experiments
 Code implemented on python 3.10~3.11 and cuda 11.8
 
-As referemced in original paper, parameter $beta$ is really important for fair result. 
-Note that as pytorch used  mean instead of summation, $beta=5$ in paper is equivalent to  $beta=0.05$ in our implementation
+As referemced in original paper, parameter $\beta$ is really important for fair result. 
+Note that as pytorch used  mean instead of summation, $\beta=5$ in paper is equivalent to  $\beta=0.05$ in our implementation
 
 Results can be automatically seen in tensorboard just by activating tensorboard --logdir logs after your implementation. 
 
