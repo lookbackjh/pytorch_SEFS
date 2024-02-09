@@ -170,8 +170,16 @@ class STrainer(pl.LightningModule):
     
     def _l1_weight_norm(self):
         l1_norm = 0.
-        for param in self.model.parameters():
+
+        for name, param in self.model.named_parameters():
+            if name == 'pi':    # don't penalize pi
+                continue
+
+            if "mask_generator" in name:
+                continue
+
             l1_norm += torch.sum(torch.abs(param))
+
         return l1_norm
 
     def on_train_end(self) -> None:
