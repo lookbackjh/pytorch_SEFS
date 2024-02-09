@@ -63,92 +63,77 @@ def get_log_dir(args):
 
 
 def main():
-    means=[]
-    stds=[]
-    ss_candidate=[1,10000,30000,50000]
-    args = parse_args()
-    args.noise=0.3
-    for ssnum in ss_candidate:
-        _l1_coef = 1e-5
-        tprs=[]
-        
-        for seed in range(5):
-            args.seed=seed
-            data = DataWrapper(SyntheticData(args.prob_type,200,40,1000,args.seed))
-            val_data = DataWrapper(SyntheticData(args.prob_type,200,40,1000,456))
 
-            
-            args.ss_epochs=ssnum
-            args.l1_coef = _l1_coef
+    #args.seed=seed
+    args=parse_args("")
+    data = DataWrapper(SyntheticData(args.prob_type,200,40,1000,args.seed))
+    val_data = DataWrapper(SyntheticData(args.prob_type,200,40,1000,456))
 
-            # NOTE: if you want to change the default values of the parameters, you can do it here.
-            # i.e., args.z_dim = 2**7
 
-            model_params = {
-                    'x_dim': data.x_dim,
-                    'z_dim': args.z_dim,
-                    'h_dim_e': args.h_dim_e,
-                    'num_layers_e': args.num_layers_e,
+    # NOTE: if you want to change the default values of the parameters, you can do it here.
+    # i.e., args.z_dim = 2**7
 
-                    'h_dim_d': args.h_dim_d,
-                    'num_layers_d': args.num_layers_d,
+    model_params = {
+            'x_dim': data.x_dim,
+            'z_dim': args.z_dim,
+            'h_dim_e': args.h_dim_e,
+            'num_layers_e': args.num_layers_e,
 
-                    'dropout': args.dropout,
-                    'fc_activate_fn': args.fc_activate_fn,
-            }
+            'h_dim_d': args.h_dim_d,
+            'num_layers_d': args.num_layers_d,
 
-            trainer_params = {
-                    'alpha': args.alpha,
-                    'beta': args.beta,
-                    'l1_coef': args.l1_coef,
-                    'optimizer_params': {
-                        'lr':  args.lr,
-                        'weight_decay': args.weight_decay,
-                    },
-                }
+            'dropout': args.dropout,
+            'fc_activate_fn': args.fc_activate_fn,
+    }
 
-            ss_lightning_params = {
-                    'max_epochs': args.ss_epochs,
-                    'precision': "16-mixed",
-                    'gradient_clip_val': args.gradient_clip_val,
-                    'batch_size': args.ss_batch_size,
-            }
+    trainer_params = {
+            'alpha': args.alpha,
+            'beta': args.beta,
+            'l1_coef': args.l1_coef,
+            'optimizer_params': {
+                'lr':  args.lr,
+                'weight_decay': args.weight_decay,
+            },
+        }
 
-            s_lightning_params = {
-                    'max_epochs': args.s_epochs,
-                    'precision': "16-mixed",
-                    'gradient_clip_val': args.gradient_clip_val,
-                    'batch_size': args.s_batch_size,
-            }
+    ss_lightning_params = {
+            'max_epochs': args.ss_epochs,
+            'precision': "16-mixed",
+            'gradient_clip_val': args.gradient_clip_val,
+            'batch_size': args.ss_batch_size,
+    }
 
-            sefs = SEFS(
-                train_data=data,
-                val_data=val_data,
-                selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
-                model_params=model_params,
-                trainer_params=trainer_params,
-                ss_lightning_params=ss_lightning_params,
-                s_lightning_params=s_lightning_params,
-                exp_name=get_log_dir(args), # this is the name of the experiment.
-                                            # you can change it to whatever you want using the function above.
-                                            
-                early_stopping_patience=10000
-            )
+    s_lightning_params = {
+            'max_epochs': args.s_epochs,
+            'precision': "16-mixed",
+            'gradient_clip_val': args.gradient_clip_val,
+            'batch_size': args.s_batch_size,
+    }
 
-            sefs.train()
-            feat_imp_idx =data.get_feature_importance()
-            pi = sefs.supervision_phase.model.get_pi()
-            pi = pi.detach().cpu().numpy()
-            pi = pi.reshape(-1)
-            top2_idx = np.argsort(pi)[-2:]
-            tpr = len(set(top2_idx).intersection(set(feat_imp_idx)))/len(feat_imp_idx)
-            tprs.append(tpr)
-            print(tpr)
-        means.append(np.mean(tprs))
-        stds.append(np.std(tprs))
+    sefs = SEFS(
+        train_data=data,
+        val_data=val_data,
+        selection_prob=np.array([0.5 for _ in range(data.x_dim)]),
+        model_params=model_params,
+        trainer_params=trainer_params,
+        ss_lightning_params=ss_lightning_params,
+        s_lightning_params=s_lightning_params,
+        exp_name=get_log_dir(args), # this is the name of the experiment.
+                                    # you can change it to whatever you want using the function above.
+                                    
+        early_stopping_patience=10000
+    )
+
+    sefs.train()
+    feat_imp_idx =data.get_feature_importance()
+    pi = sefs.supervision_phase.model.get_pi()
+    pi = pi.detach().cpu().numpy()
+    pi = pi.reshape(-1)
+    top2_idx = np.argsort(pi)[-2:]
+    print(feat_imp_idx)
+    print(top2_idx)
+
     
-    for ssnum in range(len(ss_candidate)):
-        print(f"ss_epochs:{ssnum} mean:{means[ssnum]} std:{stds[ssnum]}")
 
 
 
